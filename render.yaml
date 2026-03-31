@@ -2,16 +2,9 @@ services:
   - type: web
     name: telegram-food-bot
     runtime: python
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: WEBAPP_URL
-        fromService:
-          name: telegram-food-bot
-          type: web
-          property: host
       - key: BOT_TOKEN
         sync: false
       - key: GEMINI_API_KEY
@@ -19,6 +12,8 @@ services:
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY
+        sync: false
+      - key: WEBAPP_URL
         sync: false
       - key: ADMIN_ID
         sync: false
