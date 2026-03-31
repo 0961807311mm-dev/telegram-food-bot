@@ -1,0 +1,597 @@
+/* ============================================ */
+/* Файл: webapp/static/style.css */
+/* ============================================ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.app-container {
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 32px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.back-btn, .settings-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.back-btn:hover, .settings-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.05);
+}
+
+.date-info {
+    background: rgba(255,255,255,0.1);
+    margin: 10px 20px 0 20px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    text-align: center;
+    font-size: 14px;
+    color: rgba(255,255,255,0.9);
+}
+
+.calorie-card {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    margin: 20px;
+    padding: 20px;
+    border-radius: 24px;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.calorie-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.progress-bar {
+    background: rgba(255,255,255,0.3);
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.progress-fill {
+    background: white;
+    height: 100%;
+    width: 0%;
+    transition: width 0.5s ease;
+    border-radius: 6px;
+}
+
+.calorie-stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+}
+
+.macros-card {
+    background: #f8f9fa;
+    margin: 20px;
+    padding: 20px;
+    border-radius: 24px;
+}
+
+.macros-card h3 {
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 18px;
+}
+
+.macro-item {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.macro-item span:first-child {
+    width: 60px;
+    font-size: 14px;
+    color: #666;
+}
+
+.macro-bar-container {
+    flex: 1;
+    background: #e0e0e0;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.macro-bar {
+    height: 100%;
+    transition: width 0.5s ease;
+}
+
+.protein-bar {
+    background: #4caf50;
+}
+
+.fat-bar {
+    background: #ff9800;
+}
+
+.carbs-bar {
+    background: #2196f3;
+}
+
+.macro-item span:last-child {
+    min-width: 40px;
+    text-align: right;
+    font-weight: 600;
+    color: #333;
+}
+
+.meals-section {
+    margin: 20px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.section-header h3 {
+    font-size: 18px;
+    color: #333;
+}
+
+.add-meal-btn {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.add-meal-btn:hover {
+    background: #5a67d8;
+    transform: scale(1.05);
+}
+
+.meals-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.meal-item {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 16px;
+    margin-bottom: 12px;
+    transition: all 0.3s;
+}
+
+.meal-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.meal-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.meal-header strong {
+    font-size: 16px;
+    color: #333;
+}
+
+.meal-calories {
+    font-weight: 600;
+    color: #f5576c;
+}
+
+.meal-macros {
+    display: flex;
+    gap: 15px;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.meal-feedback {
+    background: #e3f2fd;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    color: #1976d2;
+    margin-top: 8px;
+}
+
+.meal-time {
+    font-size: 11px;
+    color: #999;
+    margin-top: 8px;
+    text-align: right;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+}
+
+.empty-state span {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 16px;
+}
+
+.empty-state button {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    margin-top: 16px;
+    cursor: pointer;
+}
+
+.actions-section {
+    margin: 20px;
+}
+
+.report-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 28px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.report-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+/* Сторінка додавання їжі */
+.camera-container {
+    padding: 20px;
+}
+
+.camera-preview {
+    background: #f0f0f0;
+    border-radius: 24px;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.camera-btn {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 16px 32px;
+    border-radius: 40px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.camera-btn:hover {
+    background: #5a67d8;
+    transform: scale(1.05);
+}
+
+.analysis-card {
+    margin: 20px;
+    background: #f8f9fa;
+    border-radius: 24px;
+    padding: 20px;
+}
+
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #e0e0e0;
+    border-top-color: #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.analysis-details {
+    margin: 20px 0;
+}
+
+.analysis-field {
+    margin-bottom: 15px;
+}
+
+.analysis-field label {
+    display: block;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.analysis-field span {
+    font-size: 16px;
+    color: #333;
+}
+
+.editable-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.editable-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+}
+
+.feedback-text {
+    background: #e3f2fd;
+    padding: 12px;
+    border-radius: 12px;
+    color: #1976d2;
+    line-height: 1.5;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.confirm-btn, .retake-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 24px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.confirm-btn {
+    background: #4caf50;
+    color: white;
+}
+
+.confirm-btn:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+}
+
+.retake-btn {
+    background: #ff9800;
+    color: white;
+}
+
+.retake-btn:hover {
+    background: #f57c00;
+    transform: translateY(-2px);
+}
+
+.info-note {
+    background: #fff3e0;
+    margin: 20px;
+    padding: 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    color: #ff9800;
+    text-align: center;
+}
+
+/* Сторінка налаштувань */
+.settings-section {
+    margin: 20px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 24px;
+}
+
+.settings-section h3 {
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 18px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #666;
+    font-size: 14px;
+}
+
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.form-group input:focus, .form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+}
+
+.save-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 28px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 10px;
+}
+
+.save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.notification-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.notification-item input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    font-size: 14px;
+}
+
+.notification-item button {
+    background: #ff4757;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.info-text {
+    text-align: center;
+    color: #666;
+    line-height: 1.6;
+}
+
+.info-text p {
+    margin-bottom: 10px;
+}
+
+.reset-btn {
+    background: #ff4757;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 24px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: all 0.3s;
+}
+
+.reset-btn:hover {
+    background: #ff3838;
+    transform: scale(1.05);
+}
+
+/* Адаптивність */
+@media (max-width: 640px) {
+    body {
+        padding: 10px;
+    }
+    
+    .app-container {
+        border-radius: 24px;
+    }
+    
+    .header h1 {
+        font-size: 18px;
+    }
+    
+    .calorie-card, .macros-card, .meals-section, .actions-section {
+        margin: 15px;
+    }
+}
+
+/* Скролбар */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
