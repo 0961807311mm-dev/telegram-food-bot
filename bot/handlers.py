@@ -1,31 +1,25 @@
-# ============================================
-# Файл: bot/handlers.py (максимально спрощений)
-# ============================================
 import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, ContextTypes
 from telegram.constants import ParseMode
 
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-
-# Глобальна змінна для бота
 _application = None
 
 def get_application():
-    """Отримати або створити екземпляр Application"""
     global _application
     if _application is None:
         if not BOT_TOKEN:
             raise ValueError("BOT_TOKEN not set")
+        # Використовуємо builder без створення Updater
         _application = Application.builder().token(BOT_TOKEN).build()
         logger.info("Bot application created")
     return _application
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обробка команди /start"""
     user = update.effective_user
     WEBAPP_URL = os.getenv("WEBAPP_URL", "")
     
@@ -72,7 +66,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Команда /help"""
     help_text = """
 📖 *Довідка*
 
@@ -87,7 +80,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(help_text, parse_mode=ParseMode.MARKDOWN)
 
 def setup_handlers(app: Application):
-    """Налаштування обробників"""
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
     logger.info("Handlers setup completed")
