@@ -28,26 +28,30 @@ async def get_application():
     return _application
 
 async def start_command(update: Update, context):
-    logger.info(f"Received /start from user {update.effective_user.id}")
-    user = update.effective_user
-    WEBAPP_URL = os.getenv("WEBAPP_URL", "https://telegram-food-bot-jedx.onrender.com")
-    
-    keyboard = [[
-        InlineKeyboardButton(
-            text="📊 Відкрити дашборд",
-            web_app=WebAppInfo(url=f"{WEBAPP_URL}/")
+    try:
+        logger.info(f"START_COMMAND CALLED - user: {update.effective_user.id}")
+        user = update.effective_user
+        WEBAPP_URL = os.getenv("WEBAPP_URL", "https://telegram-food-bot-jedx.onrender.com")
+        
+        keyboard = [[
+            InlineKeyboardButton(
+                text="📊 Відкрити дашборд",
+                web_app=WebAppInfo(url=f"{WEBAPP_URL}/")
+            )
+        ]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        welcome_text = f"🍽️ *Вітаю, {user.first_name}!*\n\nБот працює! 🎉\n\nСкоро тут буде дашборд для відстеження харчування."
+        
+        logger.info(f"Sending reply to user {user.id}")
+        await update.message.reply_text(
+            welcome_text,
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=reply_markup
         )
-    ]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    welcome_text = f"🍽️ *Вітаю, {user.first_name}!*\n\nБот працює! 🎉\n\nСкоро тут буде дашборд для відстеження харчування."
-    
-    await update.message.reply_text(
-        welcome_text,
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=reply_markup
-    )
-    logger.info(f"Sent reply to user {user.id}")
+        logger.info(f"Reply sent successfully to user {user.id}")
+    except Exception as e:
+        logger.error(f"Error in start_command: {e}", exc_info=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -78,11 +82,14 @@ async def webhook(request: Request):
     try:
         update_data = await request.json()
         logger.info(f"Received webhook update: {update_data.get('message', {}).get('text', 'no text')}")
+        
+        # Отримуємо бота і обробляємо оновлення
         bot = await get_application()
         await bot.process_update(update_data)
+        
         return JSONResponse({"status": "ok"})
     except Exception as e:
-        logger.error(f"Webhook error: {e}")
+        logger.error(f"Webhook error: {e}", exc_info=True)
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 @app.get("/")
