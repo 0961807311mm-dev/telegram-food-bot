@@ -1,12 +1,12 @@
 # ============================================
-# Файл: requirements.txt
+# Файл: requirements.txt (виправлений)
 # ============================================
 python-telegram-bot==20.7
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 httpx==0.25.1
-supabase==2.0.4
+supabase==2.5.3
 python-dotenv==1.0.0
 Pillow==10.1.0
 apscheduler==3.10.4
