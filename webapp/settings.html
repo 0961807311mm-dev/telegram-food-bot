@@ -1,0 +1,217 @@
+<!-- ============================================ -->
+<!-- Файл: webapp/settings.html -->
+<!-- ============================================ -->
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Налаштування</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <button class="back-btn" onclick="goBack()">← Назад</button>
+            <h1>⚙️ Налаштування</h1>
+            <div style="width: 40px;"></div>
+        </header>
+        
+        <div class="settings-section">
+            <h3>👤 Мої параметри</h3>
+            
+            <div class="form-group">
+                <label>Вік (років)</label>
+                <input type="number" id="age" placeholder="25">
+            </div>
+            
+            <div class="form-group">
+                <label>Стать</label>
+                <select id="gender">
+                    <option value="male">Чоловік</option>
+                    <option value="female">Жінка</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Зріст (см)</label>
+                <input type="number" id="height" placeholder="170">
+            </div>
+            
+            <div class="form-group">
+                <label>Вага (кг)</label>
+                <input type="number" id="weight" step="0.1" placeholder="70">
+            </div>
+            
+            <div class="form-group">
+                <label>Рівень активності</label>
+                <select id="activityLevel">
+                    <option value="sedentary">Сидячий (офісна робота)</option>
+                    <option value="light">Легкий (1-3 тренування/тиждень)</option>
+                    <option value="moderate">Помірний (3-5 тренувань/тиждень)</option>
+                    <option value="active">Високий (6-7 тренувань/тиждень)</option>
+                    <option value="very_active">Дуже високий (фізична робота)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Моя ціль</label>
+                <select id="goal">
+                    <option value="lose">🏃 Схуднення (дефіцит калорій)</option>
+                    <option value="maintain">⚖️ Підтримка ваги</option>
+                    <option value="gain">💪 Набір м'язової маси (профіцит)</option>
+                </select>
+            </div>
+            
+            <button class="save-btn" onclick="saveProfile()">💾 Зберегти зміни</button>
+        </div>
+        
+        <div class="settings-section">
+            <h3>⏰ Нагадування</h3>
+            <div id="notificationsList">
+                <div class="notification-item">
+                    <input type="time" id="notifTime1" value="09:00">
+                    <button onclick="addNotification()">+ Додати час</button>
+                </div>
+            </div>
+            <button class="save-btn" onclick="saveNotifications()">💾 Зберегти нагадування</button>
+        </div>
+        
+        <div class="settings-section">
+            <h3>ℹ️ Про додаток</h3>
+            <div class="info-text">
+                <p><strong>FoodTracker v1.0</strong></p>
+                <p>AI-нутриціолог на основі Gemini 2.0 Flash</p>
+                <p>Допомагає відстежувати харчування та досягати фітнес-цілей</p>
+                <button class="reset-btn" onclick="resetData()">🗑️ Скинути всі дані</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const telegramId = new URLSearchParams(window.location.search).get('user_id');
+        
+        async function loadProfile() {
+            try {
+                const response = await fetch(`/api/user/${telegramId}`);
+                const data = await response.json();
+                
+                if (!data.error) {
+                    document.getElementById('age').value = data.age || '';
+                    document.getElementById('gender').value = data.gender || 'male';
+                    document.getElementById('height').value = data.height || '';
+                    document.getElementById('weight').value = data.weight || '';
+                    document.getElementById('activityLevel').value = data.activity_level || 'moderate';
+                    document.getElementById('goal').value = data.goal || 'maintain';
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
+        
+        async function saveProfile() {
+            const profile = {
+                age: parseInt(document.getElementById('age').value) || 0,
+                gender: document.getElementById('gender').value,
+                height: parseInt(document.getElementById('height').value) || 0,
+                weight: parseFloat(document.getElementById('weight').value) || 0,
+                activity_level: document.getElementById('activityLevel').value,
+                goal: document.getElementById('goal').value
+            };
+            
+            try {
+                const response = await fetch(`/api/user/${telegramId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(profile)
+                });
+                
+                if (response.ok) {
+                    alert('✅ Профіль успішно збережено!');
+                } else {
+                    alert('❌ Помилка збереження');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                alert('❌ Помилка збереження');
+            }
+        }
+        
+        async function loadNotifications() {
+            try {
+                const response = await fetch(`/api/notifications/${telegramId}`);
+                const data = await response.json();
+                
+                if (data.times && data.times.length > 0) {
+                    const container = document.getElementById('notificationsList');
+                    container.innerHTML = '';
+                    data.times.forEach((time, index) => {
+                        addNotificationRow(time, index);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+            }
+        }
+        
+        function addNotificationRow(time = '', index = null) {
+            const container = document.getElementById('notificationsList');
+            const row = document.createElement('div');
+            row.className = 'notification-item';
+            row.innerHTML = `
+                <input type="time" value="${time}" class="notif-time">
+                <button onclick="this.parentElement.remove()">🗑️</button>
+            `;
+            container.appendChild(row);
+        }
+        
+        function addNotification() {
+            addNotificationRow('12:00');
+        }
+        
+        async function saveNotifications() {
+            const times = [];
+            document.querySelectorAll('.notif-time').forEach(input => {
+                if (input.value) {
+                    times.push(input.value);
+                }
+            });
+            
+            try {
+                const response = await fetch(`/api/notifications/${telegramId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(times)
+                });
+                
+                if (response.ok) {
+                    alert('✅ Нагадування збережено!');
+                } else {
+                    alert('❌ Помилка збереження');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                alert('❌ Помилка збереження');
+            }
+        }
+        
+        async function resetData() {
+            if (confirm('⚠️ Ви впевнені, що хочете скинути ВСІ дані харчування? Цю дію неможливо скасувати.')) {
+                alert('Функція в розробці. Напишіть /reset в боті.');
+            }
+        }
+        
+        function goBack() {
+            window.location.href = `/?user_id=${telegramId}`;
+        }
+        
+        // Завантаження даних
+        loadProfile();
+        loadNotifications();
+    </script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!-- ============================================ -->
+<!-- Файл: webapp/index.html -->
+<!-- ============================================ -->
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>FoodTracker - Дашборд</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="header-top">
+                <h1>🍽️ FoodTracker</h1>
+                <button class="settings-btn" onclick="openSettings()">⚙️</button>
+            </div>
+            <div class="date-info">
+                <span id="currentDate"></span>
+            </div>
+        </header>
+        
+        <div class="calorie-card">
+            <div class="calorie-header">
+                <span>📊 Денна норма</span>
+                <span id="calorieGoal">0</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="calorieProgress" style="width: 0%"></div>
+            </div>
+            <div class="calorie-stats">
+                <span>🍽️ Спожито: <strong id="consumedCalories">0</strong> ккал</span>
+                <span>⚡ Залишилось: <strong id="remainingCalories">0</strong> ккал</span>
+            </div>
+        </div>
+        
+        <div class="macros-card">
+            <h3>🥗 Макронутрієнти</h3>
+            <div class="macro-item">
+                <span>🥩 Білки</span>
+                <div class="macro-bar-container">
+                    <div class="macro-bar protein-bar" id="proteinBar" style="width: 0%"></div>
+                </div>
+                <span id="proteinValue">0</span><span>г</span>
+            </div>
+            <div class="macro-item">
+                <span>🧈 Жири</span>
+                <div class="macro-bar-container">
+                    <div class="macro-bar fat-bar" id="fatBar" style="width: 0%"></div>
+                </div>
+                <span id="fatValue">0</span><span>г</span>
+            </div>
+            <div class="macro-item">
+                <span>🍚 Вуглеводи</span>
+                <div class="macro-bar-container">
+                    <div class="macro-bar carbs-bar" id="carbsBar" style="width: 0%"></div>
+                </div>
+                <span id="carbsValue">0</span><span>г</span>
+            </div>
+        </div>
+        
+        <div class="meals-section">
+            <div class="section-header">
+                <h3>📝 Прийоми їжі</h3>
+                <button class="add-meal-btn" onclick="addMeal()">+ Додати</button>
+            </div>
+            <div id="mealsList" class="meals-list">
+                <div class="empty-state">
+                    <span>📸</span>
+                    <p>Ще немає прийомів їжі</p>
+                    <button onclick="addMeal()">Додати перший прийом</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="actions-section">
+            <button class="report-btn" onclick="getWeeklyReport()">
+                📊 Тижневий звіт
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        const telegramId = new URLSearchParams(window.location.search).get('user_id');
+        
+        if (!telegramId) {
+            alert('Помилка авторизації');
+        }
+        
+        // Завантаження даних
+        async function loadData() {
+            try {
+                // Завантажуємо профіль
+                const userRes = await fetch(`/api/user/${telegramId}`);
+                const userData = await userRes.json();
+                
+                if (!userData.error) {
+                    document.getElementById('calorieGoal').innerText = Math.round(userData.daily_calorie_goal) || 0;
+                }
+                
+                // Завантажуємо прийоми за сьогодні
+                const mealsRes = await fetch(`/api/meals/${telegramId}`);
+                const meals = await mealsRes.json();
+                
+                renderMeals(meals);
+                calculateTotals(meals, userData);
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+        
+        function renderMeals(meals) {
+            const container = document.getElementById('mealsList');
+            
+            if (!meals || meals.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <span>📸</span>
+                        <p>Ще немає прийомів їжі</p>
+                        <button onclick="addMeal()">Додати перший прийом</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = meals.map(meal => `
+                <div class="meal-item">
+                    <div class="meal-header">
+                        <strong>${meal.name}</strong>
+                        <span class="meal-calories">${meal.calories} ккал</span>
+                    </div>
+                    <div class="meal-macros">
+                        <span>🥩 ${meal.protein}g</span>
+                        <span>🧈 ${meal.fat}g</span>
+                        <span>🍚 ${meal.carbs}g</span>
+                    </div>
+                    ${meal.feedback ? `<div class="meal-feedback">💡 ${meal.feedback}</div>` : ''}
+                    <div class="meal-time">${new Date(meal.created_at).toLocaleTimeString('uk-UA')}</div>
+                </div>
+            `).join('');
+        }
+        
+        function calculateTotals(meals, userData) {
+            let totalCalories = 0;
+            let totalProtein = 0;
+            let totalFat = 0;
+            let totalCarbs = 0;
+            
+            meals.forEach(meal => {
+                totalCalories += meal.calories || 0;
+                totalProtein += meal.protein || 0;
+                totalFat += meal.fat || 0;
+                totalCarbs += meal.carbs || 0;
+            });
+            
+            const goal = userData.daily_calorie_goal || 2000;
+            const remaining = Math.max(0, goal - totalCalories);
+            const progress = (totalCalories / goal) * 100;
+            
+            document.getElementById('consumedCalories').innerText = totalCalories;
+            document.getElementById('remainingCalories').innerText = Math.round(remaining);
+            document.getElementById('calorieProgress').style.width = Math.min(progress, 100) + '%';
+            
+            document.getElementById('proteinValue').innerText = totalProtein;
+            document.getElementById('fatValue').innerText = totalFat;
+            document.getElementById('carbsValue').innerText = totalCarbs;
+            
+            // Розрахунок відсотків для макро (приблизно)
+            const proteinGoal = userData.weight ? userData.weight * 1.8 : 100;
+            const fatGoal = (goal * 0.28) / 9;
+            const carbsGoal = (goal - (proteinGoal * 4) - (fatGoal * 9)) / 4;
+            
+            document.getElementById('proteinBar').style.width = Math.min((totalProtein / proteinGoal) * 100, 100) + '%';
+            document.getElementById('fatBar').style.width = Math.min((totalFat / fatGoal) * 100, 100) + '%';
+            document.getElementById('carbsBar').style.width = Math.min((totalCarbs / carbsGoal) * 100, 100) + '%';
+        }
+        
+        function addMeal() {
+            window.location.href = `/add-meal?user_id=${telegramId}`;
+        }
+        
+        function openSettings() {
+            window.location.href = `/settings?user_id=${telegramId}`;
+        }
+        
+        async function getWeeklyReport() {
+            try {
+                const response = await fetch(`/api/weekly-report/${telegramId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                alert(data.ai_analysis || 'Звіт готовий! Перевірте повідомлення в боті.');
+            } catch (error) {
+                console.error('Error getting report:', error);
+                alert('Помилка отримання звіту');
+            }
+        }
+        
+        // Встановлення поточної дати
+        document.getElementById('currentDate').innerText = new Date().toLocaleDateString('uk-UA', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        // Завантаження даних при старті
+        loadData();
+        
+        // Оновлення кожні 30 секунд
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>
