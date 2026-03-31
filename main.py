@@ -1,24 +1,19 @@
-# ============================================
-# Файл: main.py
-# ============================================
 import os
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, Form, File, UploadFile, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 import httpx
 import json
 from datetime import datetime, timedelta
 from typing import Optional, List
-import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 # Імпорт наших модулів
-from bot.handlers import bot, dispatcher, setup_handlers
+from bot.handlers import get_bot, setup_handlers
 from services.supabase_client import supabase, init_supabase
 from services.gemini import GeminiService
 from services.nutrition import NutritionCalculator
@@ -50,19 +45,24 @@ if not os.path.exists(static_dir):
 # Lifespan менеджер
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Управління життєвим циклом додатку"""
     # Запуск при старті
     logger.info("Starting bot application...")
     
     # Ініціалізація Supabase
     init_supabase()
     
+    # Отримуємо бота та налаштовуємо обробники
+    bot = get_bot()
+    setup_handlers(bot)
+    
     # Налаштування вебхука
     webhook_url = f"{os.getenv('WEBAPP_URL')}/webhook"
-    await bot.set_webhook(webhook_url)
-    logger.info(f"Webhook set to {webhook_url}")
-    
-    # Налаштування обробників бота
-    setup_handlers(dispatcher)
+    try:
+        await bot.bot.set_webhook(webhook_url)
+        logger.info(f"Webhook set to {webhook_url}")
+    except Exception as e:
+        logger.error(f"Failed to set webhook: {e}")
     
     # Запуск шедулера для нагадувань
     scheduler.add_job(
@@ -79,7 +79,11 @@ async def lifespan(app: FastAPI):
     # Закриття при зупинці
     logger.info("Shutting down...")
     scheduler.shutdown()
-    await bot.delete_webhook()
+    try:
+        await bot.bot.delete_webhook()
+        logger.info("Webhook deleted")
+    except Exception as e:
+        logger.error(f"Error deleting webhook: {e}")
 
 # Створення FastAPI додатку
 app = FastAPI(lifespan=lifespan)
@@ -95,7 +99,8 @@ async def webhook(request: Request):
     """Обробка вебхуків від Telegram"""
     try:
         update_data = await request.json()
-        await dispatcher.process_update(update_data)
+        bot = get_bot()
+        await bot.process_update(update_data)
         return JSONResponse({"status": "ok"})
     except Exception as e:
         logger.error(f"Webhook error: {e}")
@@ -107,23 +112,35 @@ async def webhook(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Головний дашборд"""
-    with open(os.path.join(webapp_dir, "index.html"), "r", encoding="utf-8") as f:
-        html = f.read()
-    return HTMLResponse(content=html)
+    try:
+        with open(os.path.join(webapp_dir, "index.html"), "r", encoding="utf-8") as f:
+            html = f.read()
+        return HTMLResponse(content=html)
+    except FileNotFoundError:
+        logger.error("index.html not found")
+        return HTMLResponse(content="<h1>Error: index.html not found</h1>", status_code=404)
 
 @app.get("/add-meal", response_class=HTMLResponse)
 async def add_meal_page(request: Request):
     """Сторінка додавання їжі"""
-    with open(os.path.join(webapp_dir, "add_meal.html"), "r", encoding="utf-8") as f:
-        html = f.read()
-    return HTMLResponse(content=html)
+    try:
+        with open(os.path.join(webapp_dir, "add_meal.html"), "r", encoding="utf-8") as f:
+            html = f.read()
+        return HTMLResponse(content=html)
+    except FileNotFoundError:
+        logger.error("add_meal.html not found")
+        return HTMLResponse(content="<h1>Error: add_meal.html not found</h1>", status_code=404)
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     """Сторінка налаштувань"""
-    with open(os.path.join(webapp_dir, "settings.html"), "r", encoding="utf-8") as f:
-        html = f.read()
-    return HTMLResponse(content=html)
+    try:
+        with open(os.path.join(webapp_dir, "settings.html"), "r", encoding="utf-8") as f:
+            html = f.read()
+        return HTMLResponse(content=html)
+    except FileNotFoundError:
+        logger.error("settings.html not found")
+        return HTMLResponse(content="<h1>Error: settings.html not found</h1>", status_code=404)
 
 # ============================================
 # API ENDPOINTS
@@ -132,6 +149,9 @@ async def settings_page(request: Request):
 async def get_user(telegram_id: int):
     """Отримати дані користувача"""
     try:
+        if supabase is None:
+            return JSONResponse({"error": "Database not initialized"}, status_code=500)
+        
         response = supabase.table("users").select("*").eq("telegram_id", telegram_id).execute()
         if response.data:
             return JSONResponse(response.data[0])
@@ -144,9 +164,12 @@ async def get_user(telegram_id: int):
 async def update_user(telegram_id: int, profile: dict):
     """Оновити профіль користувача"""
     try:
+        if supabase is None:
+            return JSONResponse({"error": "Database not initialized"}, status_code=500)
+        
         # Розрахувати норму калорій
         user_profile = UserProfile(**profile)
-        daily_calories = nutrition_calculator.calculate_tdee(user_profile)
+        daily_calories = nutrition_calculator.calculate_tdee(user_profile.dict())
         
         data = {
             "telegram_id": telegram_id,
@@ -178,6 +201,9 @@ async def update_user(telegram_id: int, profile: dict):
 async def get_meals(telegram_id: int, date: Optional[str] = None):
     """Отримати прийоми їжі за день"""
     try:
+        if supabase is None:
+            return JSONResponse({"error": "Database not initialized"}, status_code=500)
+        
         if not date:
             date = datetime.utcnow().date().isoformat()
         
@@ -211,6 +237,9 @@ async def analyze_meal(telegram_id: int = Form(...), photo: UploadFile = File(..
 async def create_meal(meal: dict):
     """Зберегти прийом їжі"""
     try:
+        if supabase is None:
+            return JSONResponse({"error": "Database not initialized"}, status_code=500)
+        
         meal_data = {
             "telegram_id": meal.get("telegram_id"),
             "photo_url": meal.get("photo_url"),
@@ -234,6 +263,9 @@ async def create_meal(meal: dict):
 async def get_weekly_report(telegram_id: int):
     """Отримати тижневий звіт"""
     try:
+        if supabase is None:
+            return JSONResponse({"error": "Database not initialized"}, status_code=500)
+        
         # Отримуємо дані за останні 7 днів
         week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
         
@@ -283,6 +315,9 @@ async def get_weekly_report(telegram_id: int):
 async def set_notifications(telegram_id: int, times: List[str]):
     """Встановити час нагадувань"""
     try:
+        if supabase is None:
+            return JSONResponse({"error": "Database not initialized"}, status_code=500)
+        
         # Видаляємо старі нагадування
         supabase.table("notifications").delete().eq("telegram_id", telegram_id).execute()
         
@@ -305,6 +340,9 @@ async def set_notifications(telegram_id: int, times: List[str]):
 async def get_notifications(telegram_id: int):
     """Отримати налаштування нагадувань"""
     try:
+        if supabase is None:
+            return JSONResponse({"error": "Database not initialized"}, status_code=500)
+        
         response = supabase.table("notifications").select("*").eq("telegram_id", telegram_id).execute()
         times = [n.get("notification_time") for n in response.data if n.get("is_active")]
         return JSONResponse({"times": times})
@@ -318,22 +356,29 @@ async def get_notifications(telegram_id: int):
 async def check_notifications():
     """Перевірка та відправка нагадувань"""
     try:
+        if supabase is None:
+            logger.warning("Supabase not initialized, skipping notifications")
+            return
+        
         current_time = datetime.utcnow().strftime("%H:%M")
         
         # Знаходимо всі активні нагадування на цей час
         response = supabase.table("notifications").select("*").eq("notification_time", current_time).eq("is_active", True).execute()
         
+        bot = get_bot()
         for notification in response.data:
             telegram_id = notification.get("telegram_id")
             
-            # Відправляємо повідомлення
-            await bot.send_message(
-                chat_id=telegram_id,
-                text="🍽️ **Час прийому їжі!**\n\nНе забудьте додати свій прийом їжі до щоденника харчування.",
-                parse_mode="Markdown"
-            )
-            
-            logger.info(f"Notification sent to {telegram_id} at {current_time}")
+            try:
+                # Відправляємо повідомлення
+                await bot.bot.send_message(
+                    chat_id=telegram_id,
+                    text="🍽️ *Час прийому їжі!*\n\nНе забудьте додати свій прийом їжі до щоденника харчування.",
+                    parse_mode="Markdown"
+                )
+                logger.info(f"Notification sent to {telegram_id} at {current_time}")
+            except Exception as e:
+                logger.error(f"Failed to send notification to {telegram_id}: {e}")
     except Exception as e:
         logger.error(f"Error checking notifications: {e}")
 
@@ -345,9 +390,19 @@ async def health_check():
     """Перевірка стану бота"""
     return JSONResponse({
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
+        "supabase": "connected" if supabase else "disconnected"
     })
+
+# ============================================
+# ROOT ENDPOINT
+# ============================================
+@app.get("/health-check")
+async def health_check_root():
+    """Альтернативний health check"""
+    return {"status": "ok", "message": "Bot is running"}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
