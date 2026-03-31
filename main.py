@@ -1,11 +1,13 @@
+# ============================================
+# Файл: main.py (повністю виправлений для Docker)
+# ============================================
 import os
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
+from fastapi import FastAPI, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
-import httpx
 import json
 from datetime import datetime, timedelta
 from typing import Optional, List
@@ -13,11 +15,11 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 # Імпорт наших модулів
-from bot.handlers import get_bot, setup_handlers
+from bot.handlers import get_application, setup_handlers
 from services.supabase_client import supabase, init_supabase
 from services.gemini import GeminiService
 from services.nutrition import NutritionCalculator
-from models.schemas import UserProfile, MealCreate, MealResponse
+from models.schemas import UserProfile
 
 load_dotenv()
 
@@ -35,12 +37,11 @@ scheduler = AsyncIOScheduler()
 # WebApp директорія
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 webapp_dir = os.path.join(BASE_DIR, "webapp")
-if not os.path.exists(webapp_dir):
-    os.makedirs(webapp_dir)
-    
 static_dir = os.path.join(webapp_dir, "static")
-if not os.path.exists(static_dir):
-    os.makedirs(static_dir)
+
+# Створюємо директорії якщо їх немає
+os.makedirs(webapp_dir, exist_ok=True)
+os.makedirs(static_dir, exist_ok=True)
 
 # Lifespan менеджер
 @asynccontextmanager
@@ -53,16 +54,16 @@ async def lifespan(app: FastAPI):
     init_supabase()
     
     # Отримуємо бота та налаштовуємо обробники
-    bot = get_bot()
-    setup_handlers(bot)
-    
-    # Налаштування вебхука
-    webhook_url = f"{os.getenv('WEBAPP_URL')}/webhook"
     try:
+        bot = get_application()
+        setup_handlers(bot)
+        
+        # Налаштування вебхука
+        webhook_url = f"{os.getenv('WEBAPP_URL')}/webhook"
         await bot.bot.set_webhook(webhook_url)
         logger.info(f"Webhook set to {webhook_url}")
     except Exception as e:
-        logger.error(f"Failed to set webhook: {e}")
+        logger.error(f"Failed to setup bot: {e}")
     
     # Запуск шедулера для нагадувань
     scheduler.add_job(
@@ -80,13 +81,14 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down...")
     scheduler.shutdown()
     try:
+        bot = get_application()
         await bot.bot.delete_webhook()
         logger.info("Webhook deleted")
     except Exception as e:
-        logger.error(f"Error deleting webhook: {e}")
+        logger.error(f"Error during shutdown: {e}")
 
 # Створення FastAPI додатку
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, title="FoodTracker Bot", version="1.0.0")
 
 # Монтуємо статичні файли
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -99,7 +101,7 @@ async def webhook(request: Request):
     """Обробка вебхуків від Telegram"""
     try:
         update_data = await request.json()
-        bot = get_bot()
+        bot = get_application()
         await bot.process_update(update_data)
         return JSONResponse({"status": "ok"})
     except Exception as e:
@@ -113,34 +115,49 @@ async def webhook(request: Request):
 async def index(request: Request):
     """Головний дашборд"""
     try:
-        with open(os.path.join(webapp_dir, "index.html"), "r", encoding="utf-8") as f:
+        index_path = os.path.join(webapp_dir, "index.html")
+        if not os.path.exists(index_path):
+            logger.error(f"index.html not found at {index_path}")
+            return HTMLResponse(content="<h1>Error: index.html not found</h1>", status_code=404)
+        
+        with open(index_path, "r", encoding="utf-8") as f:
             html = f.read()
         return HTMLResponse(content=html)
-    except FileNotFoundError:
-        logger.error("index.html not found")
-        return HTMLResponse(content="<h1>Error: index.html not found</h1>", status_code=404)
+    except Exception as e:
+        logger.error(f"Error serving index: {e}")
+        return HTMLResponse(content=f"<h1>Error: {e}</h1>", status_code=500)
 
 @app.get("/add-meal", response_class=HTMLResponse)
 async def add_meal_page(request: Request):
     """Сторінка додавання їжі"""
     try:
-        with open(os.path.join(webapp_dir, "add_meal.html"), "r", encoding="utf-8") as f:
+        add_meal_path = os.path.join(webapp_dir, "add_meal.html")
+        if not os.path.exists(add_meal_path):
+            logger.error(f"add_meal.html not found at {add_meal_path}")
+            return HTMLResponse(content="<h1>Error: add_meal.html not found</h1>", status_code=404)
+        
+        with open(add_meal_path, "r", encoding="utf-8") as f:
             html = f.read()
         return HTMLResponse(content=html)
-    except FileNotFoundError:
-        logger.error("add_meal.html not found")
-        return HTMLResponse(content="<h1>Error: add_meal.html not found</h1>", status_code=404)
+    except Exception as e:
+        logger.error(f"Error serving add-meal: {e}")
+        return HTMLResponse(content=f"<h1>Error: {e}</h1>", status_code=500)
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     """Сторінка налаштувань"""
     try:
-        with open(os.path.join(webapp_dir, "settings.html"), "r", encoding="utf-8") as f:
+        settings_path = os.path.join(webapp_dir, "settings.html")
+        if not os.path.exists(settings_path):
+            logger.error(f"settings.html not found at {settings_path}")
+            return HTMLResponse(content="<h1>Error: settings.html not found</h1>", status_code=404)
+        
+        with open(settings_path, "r", encoding="utf-8") as f:
             html = f.read()
         return HTMLResponse(content=html)
-    except FileNotFoundError:
-        logger.error("settings.html not found")
-        return HTMLResponse(content="<h1>Error: settings.html not found</h1>", status_code=404)
+    except Exception as e:
+        logger.error(f"Error serving settings: {e}")
+        return HTMLResponse(content=f"<h1>Error: {e}</h1>", status_code=500)
 
 # ============================================
 # API ENDPOINTS
@@ -169,7 +186,14 @@ async def update_user(telegram_id: int, profile: dict):
         
         # Розрахувати норму калорій
         user_profile = UserProfile(**profile)
-        daily_calories = nutrition_calculator.calculate_tdee(user_profile.dict())
+        daily_calories = nutrition_calculator.calculate_tdee({
+            "age": user_profile.age,
+            "gender": user_profile.gender,
+            "height": user_profile.height,
+            "weight": user_profile.weight,
+            "activity_level": user_profile.activity_level,
+            "goal": user_profile.goal
+        })
         
         data = {
             "telegram_id": telegram_id,
@@ -365,7 +389,10 @@ async def check_notifications():
         # Знаходимо всі активні нагадування на цей час
         response = supabase.table("notifications").select("*").eq("notification_time", current_time).eq("is_active", True).execute()
         
-        bot = get_bot()
+        if not response.data:
+            return
+        
+        bot = get_application()
         for notification in response.data:
             telegram_id = notification.get("telegram_id")
             
@@ -386,21 +413,33 @@ async def check_notifications():
 # HEALTH CHECK
 # ============================================
 @app.get("/health")
+@app.get("/health-check")
 async def health_check():
     """Перевірка стану бота"""
     return JSONResponse({
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "supabase": "connected" if supabase else "disconnected"
+        "supabase": "connected" if supabase else "disconnected",
+        "python_version": "3.11"
     })
 
 # ============================================
-# ROOT ENDPOINT
+# ROOT ENDPOINT INFO
 # ============================================
-@app.get("/health-check")
-async def health_check_root():
-    """Альтернативний health check"""
-    return {"status": "ok", "message": "Bot is running"}
+@app.get("/info")
+async def info():
+    """Інформація про сервіс"""
+    return JSONResponse({
+        "name": "FoodTracker Bot",
+        "version": "1.0.0",
+        "description": "Telegram food tracker bot with Gemini AI",
+        "endpoints": [
+            "/ - WebApp Dashboard",
+            "/webhook - Telegram Webhook",
+            "/health - Health Check",
+            "/api/* - API Endpoints"
+        ]
+    })
 
 if __name__ == "__main__":
     import uvicorn
