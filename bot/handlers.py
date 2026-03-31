@@ -1,26 +1,30 @@
-# ============================================
-# Файл: bot/handlers.py
-# ============================================
 import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from telegram.constants import ParseMode
 
 logger = logging.getLogger(__name__)
 
-# Ініціалізація бота
-from telegram.ext import ApplicationBuilder
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-bot = ApplicationBuilder().token(BOT_TOKEN).build()
-dispatcher = bot
 
-# WebApp URL
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://your-app.onrender.com")
+# Створення бота (новий синтаксис)
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN not set")
+
+bot_app = None
+
+def get_bot():
+    """Отримати або створити екземпляр бота"""
+    global bot_app
+    if bot_app is None:
+        bot_app = Application.builder().token(BOT_TOKEN).build()
+    return bot_app
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обробка команди /start"""
     user = update.effective_user
+    WEBAPP_URL = os.getenv("WEBAPP_URL", "")
     
     # Створюємо клавіатуру з WebApp кнопкою
     keyboard = [
@@ -89,12 +93,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /report - тижневий звіт"""
-    await update.message.reply_text("📊 Формую тижневий звіт... Зачекайте кілька секунд.")
-    
-    # Тут має бути виклик API для отримання звіту
-    # Для простоти поки що відправляємо заглушку
     await update.message.reply_text(
-        "📈 *Тижневий звіт*\n\n"
+        "📊 Формую тижневий звіт... Зачекайте кілька секунд.\n\n"
         "Ваш звіт буде доступний у дашборді найближчим часом.\n"
         "Відкрийте головний дашборд для детальної інформації.",
         parse_mode=ParseMode.MARKDOWN
@@ -102,7 +102,6 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /reset - скидання даних"""
-    # Тут буде логіка скидання даних
     await update.message.reply_text(
         "⚠️ *Підтвердження*\n\n"
         "Ви впевнені, що хочете скинути всі дані харчування?\n"
@@ -122,7 +121,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     if query.data == "reset_confirm":
-        # Логіка скидання
         await query.edit_message_text(
             "✅ Всі дані успішно скинуто!\n"
             "Можете починати вести щоденник харчування заново."
@@ -137,8 +135,5 @@ def setup_handlers(application):
     application.add_handler(CommandHandler("report", report_command))
     application.add_handler(CommandHandler("reset", reset_command))
     application.add_handler(CallbackQueryHandler(button_callback))
-    
-    # Додаткові обробники для повідомлень
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, help_command))
     
     logger.info("Handlers setup completed")
