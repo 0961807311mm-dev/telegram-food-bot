@@ -3,7 +3,6 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,17 +18,17 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 _application = None
 
 async def get_application():
-    """Отримати або створити екземпляр Application"""
     global _application
     if _application is None:
         if not BOT_TOKEN:
             raise ValueError("BOT_TOKEN not set")
         _application = Application.builder().token(BOT_TOKEN).build()
-        await _application.initialize()  # ← Додано ініціалізацію!
+        await _application.initialize()
         logger.info("Bot application created and initialized")
     return _application
 
 async def start_command(update: Update, context):
+    logger.info(f"Received /start from user {update.effective_user.id}")
     user = update.effective_user
     WEBAPP_URL = os.getenv("WEBAPP_URL", "https://telegram-food-bot-jedx.onrender.com")
     
@@ -48,14 +47,18 @@ async def start_command(update: Update, context):
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=reply_markup
     )
+    logger.info(f"Sent reply to user {user.id}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting bot...")
     
-    # Ініціалізуємо бота при старті
+    # Отримуємо та ініціалізуємо бота
     bot = await get_application()
+    
+    # Додаємо обробник команди start
     bot.add_handler(CommandHandler("start", start_command))
+    logger.info("Handler added")
     
     # Налаштовуємо вебхук
     webhook_url = f"{os.getenv('WEBAPP_URL', 'https://telegram-food-bot-jedx.onrender.com')}/webhook"
@@ -74,6 +77,7 @@ app = FastAPI(lifespan=lifespan)
 async def webhook(request: Request):
     try:
         update_data = await request.json()
+        logger.info(f"Received webhook update: {update_data.get('message', {}).get('text', 'no text')}")
         bot = await get_application()
         await bot.process_update(update_data)
         return JSONResponse({"status": "ok"})
