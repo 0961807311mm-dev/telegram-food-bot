@@ -3,6 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,18 +18,20 @@ from telegram.constants import ParseMode
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 _application = None
 
-def get_application():
+async def get_application():
+    """Отримати або створити екземпляр Application"""
     global _application
     if _application is None:
         if not BOT_TOKEN:
             raise ValueError("BOT_TOKEN not set")
         _application = Application.builder().token(BOT_TOKEN).build()
-        logger.info("Bot application created")
+        await _application.initialize()  # ← Додано ініціалізацію!
+        logger.info("Bot application created and initialized")
     return _application
 
 async def start_command(update: Update, context):
     user = update.effective_user
-    WEBAPP_URL = os.getenv("WEBAPP_URL", "https://your-app.onrender.com")
+    WEBAPP_URL = os.getenv("WEBAPP_URL", "https://telegram-food-bot-jedx.onrender.com")
     
     keyboard = [[
         InlineKeyboardButton(
@@ -38,7 +41,7 @@ async def start_command(update: Update, context):
     ]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    welcome_text = f"🍽️ *Вітаю, {user.first_name}!*\n\nЦе мінімальна версія бота для перевірки."
+    welcome_text = f"🍽️ *Вітаю, {user.first_name}!*\n\nБот працює! 🎉\n\nСкоро тут буде дашборд для відстеження харчування."
     
     await update.message.reply_text(
         welcome_text,
@@ -49,10 +52,13 @@ async def start_command(update: Update, context):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting bot...")
-    bot = get_application()
+    
+    # Ініціалізуємо бота при старті
+    bot = await get_application()
     bot.add_handler(CommandHandler("start", start_command))
     
-    webhook_url = f"{os.getenv('WEBAPP_URL')}/webhook"
+    # Налаштовуємо вебхук
+    webhook_url = f"{os.getenv('WEBAPP_URL', 'https://telegram-food-bot-jedx.onrender.com')}/webhook"
     await bot.bot.set_webhook(webhook_url)
     logger.info(f"Webhook set to {webhook_url}")
     
@@ -60,6 +66,7 @@ async def lifespan(app: FastAPI):
     
     logger.info("Shutting down...")
     await bot.bot.delete_webhook()
+    await bot.shutdown()
 
 app = FastAPI(lifespan=lifespan)
 
@@ -67,12 +74,12 @@ app = FastAPI(lifespan=lifespan)
 async def webhook(request: Request):
     try:
         update_data = await request.json()
-        bot = get_application()
+        bot = await get_application()
         await bot.process_update(update_data)
         return JSONResponse({"status": "ok"})
     except Exception as e:
         logger.error(f"Webhook error: {e}")
-        return JSONResponse({"status": "error"}, status_code=500)
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 
 @app.get("/")
 async def index():
