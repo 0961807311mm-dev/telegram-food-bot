@@ -1,5 +1,5 @@
 # ============================================
-# Файл: main.py (ПОВНИЙ ФІНАЛЬНИЙ З БАЗОЮ ДАНИХ)
+# Файл: main.py (ПОВНИЙ З ЛОГУВАННЯМ)
 # ============================================
 import os
 import logging
@@ -49,6 +49,7 @@ app_instance = None
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Відповідає на команду /start"""
     user = update.effective_user
+    logger.info(f"📨 Start command from user {user.id}")
     
     # Перевіряємо чи є профіль
     profile = get_user_profile(user.id)
@@ -111,6 +112,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN,
         reply_markup=reply_markup
     )
+    logger.info(f"✅ Reply sent to user {user.id}")
 
 async def setup_bot():
     """Налаштовує бота"""
@@ -302,11 +304,12 @@ async def settings_page():
                         alert('✅ Профіль збережено!');
                         window.location.href = `/?user_id=${telegramId}`;
                     } else {
-                        alert('❌ Помилка збереження');
+                        const error = await response.json();
+                        alert('❌ Помилка збереження: ' + (error.error || 'невідома помилка'));
                     }
                 };
                 
-                loadProfile();
+                if (telegramId) loadProfile();
             </script>
         </body>
         </html>
@@ -320,79 +323,140 @@ async def settings_page():
 async def get_user(telegram_id: int):
     """Отримати дані користувача"""
     try:
+        logger.info(f"🔍 API: Getting user {telegram_id}")
+        
         if supabase is None:
+            logger.error("Database not initialized")
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
         profile = get_user_profile(telegram_id)
         if profile:
+            logger.info(f"✅ User {telegram_id} found")
             return JSONResponse(profile)
+        
+        logger.info(f"ℹ️ User {telegram_id} not found")
         return JSONResponse({"error": "User not found"}, status_code=404)
+        
     except Exception as e:
-        logger.error(f"Error getting user: {e}")
+        logger.error(f"❌ Error getting user: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/api/user/{telegram_id}")
 async def update_user(telegram_id: int, profile: dict):
     """Оновити профіль користувача"""
     try:
+        logger.info(f"📝 API: Updating user {telegram_id}")
+        logger.info(f"Received profile data: {profile}")
+        
         if supabase is None:
+            logger.error("Database not initialized")
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
-        # Розраховуємо норму калорій
-        daily_calories = nutrition_calculator.calculate_tdee(profile)
+        # Валідація та конвертація типів
+        age = profile.get("age")
+        if age is not None:
+            age = int(age)
         
+        height = profile.get("height")
+        if height is not None:
+            height = int(height)
+        
+        weight = profile.get("weight")
+        if weight is not None:
+            weight = float(weight)
+        
+        # Підготовка даних для розрахунку
         profile_data = {
-            "age": profile.get("age"),
+            "age": age,
+            "gender": profile.get("gender", "male"),
+            "height": height,
+            "weight": weight,
+            "activity_level": profile.get("activity_level", "moderate"),
+            "goal": profile.get("goal", "maintain"),
+        }
+        
+        logger.info(f"Processed profile data for calculation: {profile_data}")
+        
+        # Розраховуємо норму калорій
+        daily_calories = nutrition_calculator.calculate_tdee(profile_data)
+        logger.info(f"Calculated daily calories: {daily_calories}")
+        
+        user_data = {
+            "age": age,
             "gender": profile.get("gender"),
-            "height": profile.get("height"),
-            "weight": profile.get("weight"),
+            "height": height,
+            "weight": weight,
             "activity_level": profile.get("activity_level"),
             "goal": profile.get("goal"),
             "daily_calorie_goal": daily_calories,
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        result = save_user_profile(telegram_id, profile_data)
-        return JSONResponse(result or {})
+        logger.info(f"Final user data to save: {user_data}")
+        
+        result = save_user_profile(telegram_id, user_data)
+        
+        if result:
+            logger.info(f"✅ Profile saved successfully for {telegram_id}")
+            return JSONResponse(result)
+        else:
+            logger.error(f"❌ Failed to save profile for {telegram_id}")
+            return JSONResponse({"error": "Failed to save profile"}, status_code=500)
+            
     except Exception as e:
-        logger.error(f"Error updating user: {e}")
+        logger.error(f"❌ Error updating user: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/meals/{telegram_id}")
 async def get_meals(telegram_id: int, date: Optional[str] = None):
     """Отримати прийоми їжі за день"""
     try:
+        logger.info(f"🔍 API: Getting meals for {telegram_id}")
+        
         if supabase is None:
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
         meals = get_today_meals(telegram_id)
+        logger.info(f"Found {len(meals)} meals for {telegram_id}")
         return JSONResponse(meals)
+        
     except Exception as e:
-        logger.error(f"Error getting meals: {e}")
+        logger.error(f"❌ Error getting meals: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/api/analyze")
 async def analyze_meal(photo: UploadFile = File(...)):
     """Аналіз фото їжі через Gemini"""
     try:
+        logger.info(f"📸 API: Analyzing meal photo: {photo.filename}")
+        
         if not gemini_service:
+            logger.error("Gemini service not initialized")
             return JSONResponse({"error": "Gemini service not initialized"}, status_code=500)
         
         photo_bytes = await photo.read()
+        logger.info(f"Photo size: {len(photo_bytes)} bytes")
+        
         analysis = await gemini_service.analyze_meal(photo_bytes, photo.filename)
+        logger.info(f"Analysis result: {analysis}")
+        
         return JSONResponse(analysis)
+        
     except Exception as e:
-        logger.error(f"Analysis error: {e}")
+        logger.error(f"❌ Analysis error: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/api/meals")
 async def create_meal(meal: dict):
     """Зберегти прийом їжі"""
     try:
+        telegram_id = meal.get("telegram_id")
+        logger.info(f"📝 API: Saving meal for user {telegram_id}")
+        logger.info(f"Meal data: {meal}")
+        
         if supabase is None:
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
-        telegram_id = meal.get("telegram_id")
         meal_data = {
             "photo_url": meal.get("photo_url"),
             "name": meal.get("name"),
@@ -406,25 +470,23 @@ async def create_meal(meal: dict):
         
         result = save_meal(telegram_id, meal_data)
         
-        # Оновлюємо статистику для користувача
         if result:
-            # Отримуємо сьогоднішні прийоми
-            today_meals = get_today_meals(telegram_id)
-            user_profile = get_user_profile(telegram_id)
+            logger.info(f"✅ Meal saved for user {telegram_id}")
+            return JSONResponse(result)
+        else:
+            logger.error(f"❌ Failed to save meal for {telegram_id}")
+            return JSONResponse({"error": "Failed to save meal"}, status_code=500)
             
-            if user_profile:
-                summary = nutrition_calculator.get_daily_summary(today_meals, user_profile)
-                logger.info(f"User {telegram_id} daily summary: {summary}")
-        
-        return JSONResponse(result or {})
     except Exception as e:
-        logger.error(f"Error creating meal: {e}")
+        logger.error(f"❌ Error creating meal: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/daily-summary/{telegram_id}")
 async def get_daily_summary(telegram_id: int):
     """Отримати денну статистику"""
     try:
+        logger.info(f"📊 API: Getting daily summary for {telegram_id}")
+        
         if supabase is None:
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
@@ -432,35 +494,31 @@ async def get_daily_summary(telegram_id: int):
         user_profile = get_user_profile(telegram_id)
         
         if not user_profile:
+            logger.info(f"No profile found for {telegram_id}")
             return JSONResponse({"error": "User profile not found"}, status_code=404)
         
         summary = nutrition_calculator.get_daily_summary(meals, user_profile)
-        
-        # Додаємо рекомендації
-        if gemini_service and meals:
-            try:
-                # Формуємо коротку рекомендацію на основі останнього прийому
-                last_meal = meals[0] if meals else None
-                if last_meal and last_meal.get("feedback"):
-                    summary["last_recommendation"] = last_meal.get("feedback")
-            except Exception as e:
-                logger.error(f"Error generating recommendation: {e}")
+        logger.info(f"Summary for {telegram_id}: {summary}")
         
         return JSONResponse(summary)
+        
     except Exception as e:
-        logger.error(f"Error getting daily summary: {e}")
+        logger.error(f"❌ Error getting daily summary: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/weekly-report/{telegram_id}")
 async def get_weekly_report(telegram_id: int):
     """Отримати тижневий звіт з AI-аналізом"""
     try:
+        logger.info(f"📊 API: Getting weekly report for {telegram_id}")
+        
         if supabase is None:
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
         meals = get_weekly_meals(telegram_id)
         
         if not meals:
+            logger.info(f"No meals found for {telegram_id} in last week")
             return JSONResponse({"error": "No meals found for the last week"}, status_code=404)
         
         # Агрегуємо дані
@@ -476,20 +534,20 @@ async def get_weekly_report(telegram_id: int):
             "carbs": total_carbs / 7
         }
         
-        # Отримуємо профіль користувача
         user_profile = get_user_profile(telegram_id)
         
-        # Генеруємо AI аналіз
         ai_analysis = "📊 *Тижневий звіт*\n\n"
         
         if gemini_service:
             try:
+                logger.info("Generating AI weekly analysis...")
                 ai_analysis = await gemini_service.analyze_weekly(meals, avg_per_day, user_profile)
+                logger.info("AI analysis generated")
             except Exception as e:
                 logger.error(f"Gemini weekly analysis error: {e}")
                 ai_analysis = "⚠️ Не вдалося згенерувати AI-аналіз. Спробуйте пізніше."
         
-        return JSONResponse({
+        result = {
             "total": {
                 "calories": total_calories,
                 "protein": total_protein,
@@ -499,35 +557,53 @@ async def get_weekly_report(telegram_id: int):
             "average_per_day": avg_per_day,
             "meals_count": len(meals),
             "ai_analysis": ai_analysis
-        })
+        }
+        
+        logger.info(f"Weekly report generated for {telegram_id}")
+        return JSONResponse(result)
+        
     except Exception as e:
-        logger.error(f"Error getting weekly report: {e}")
+        logger.error(f"❌ Error getting weekly report: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/api/notifications/{telegram_id}")
 async def set_notifications(telegram_id: int, times: List[str]):
     """Встановити час нагадувань"""
     try:
+        logger.info(f"⏰ API: Setting notifications for {telegram_id}: {times}")
+        
         if supabase is None:
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
         result = save_notifications(telegram_id, times)
-        return JSONResponse({"status": "success" if result else "error", "times": times})
+        
+        if result:
+            logger.info(f"✅ Notifications saved for {telegram_id}")
+            return JSONResponse({"status": "success", "times": times})
+        else:
+            logger.error(f"❌ Failed to save notifications for {telegram_id}")
+            return JSONResponse({"error": "Failed to save notifications"}, status_code=500)
+            
     except Exception as e:
-        logger.error(f"Error setting notifications: {e}")
+        logger.error(f"❌ Error setting notifications: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/notifications/{telegram_id}")
 async def get_notifications_endpoint(telegram_id: int):
     """Отримати налаштування нагадувань"""
     try:
+        logger.info(f"🔍 API: Getting notifications for {telegram_id}")
+        
         if supabase is None:
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
         times = get_notifications(telegram_id)
+        logger.info(f"Found {len(times)} notifications for {telegram_id}")
+        
         return JSONResponse({"times": times})
+        
     except Exception as e:
-        logger.error(f"Error getting notifications: {e}")
+        logger.error(f"❌ Error getting notifications: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 # ============================================
