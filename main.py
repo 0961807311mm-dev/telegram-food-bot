@@ -74,10 +74,14 @@ async def webhook(request: Request):
         data = await request.json()
         logger.info(f"📨 Webhook received: {data.get('message', {}).get('text', 'no text')}")
         
-        # Створюємо Update та обробляємо
-        update = Update.de_json(data, None)
-        bot = await setup_bot()
-        await bot.process_update(update)
+        # Отримуємо бота
+        bot_app = await setup_bot()
+        
+        # ВАЖЛИВО: створюємо Update з ботом
+        update = Update.de_json(data, bot_app.bot)
+        
+        # Обробляємо оновлення
+        await bot_app.process_update(update)
         
         return JSONResponse({"status": "ok"})
     except Exception as e:
