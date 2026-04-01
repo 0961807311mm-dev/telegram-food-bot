@@ -1,5 +1,5 @@
 # ============================================
-# Файл: main.py (ПОВНИЙ ФІНАЛЬНИЙ)
+# Файл: main.py (ПОВНИЙ ФІНАЛЬНИЙ З БАЗОЮ ДАНИХ)
 # ============================================
 import os
 import logging
@@ -26,7 +26,7 @@ from telegram.constants import ParseMode
 
 # Імпорт сервісів
 from services.gemini import GeminiService
-from services.supabase_client import supabase, init_supabase
+from services.supabase_client import supabase, init_supabase, save_user_profile, get_user_profile, save_meal, get_today_meals, get_weekly_meals, save_notifications, get_notifications
 from services.nutrition import NutritionCalculator
 
 # Ініціалізація сервісів
@@ -50,6 +50,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Відповідає на команду /start"""
     user = update.effective_user
     
+    # Перевіряємо чи є профіль
+    profile = get_user_profile(user.id)
+    
     keyboard = [
         [
             InlineKeyboardButton(
@@ -72,10 +75,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    welcome_text = f"""
+    if not profile:
+        welcome_text = f"""
 🍽️ *Вітаю, {user.first_name}!*
 
 Я твій персональний AI-нутриціолог на базі *Gemini 2.5 Flash*.
+
+*Щоб почати, налаштуй свій профіль:*
+1️⃣ Натисни кнопку "Налаштування"
+2️⃣ Введи свої параметри (вік, вага, зріст)
+3️⃣ Обери ціль (схуднення/підтримка/набір)
+
+Після налаштувань я розрахую твою норму калорій!
+"""
+    else:
+        daily_goal = profile.get("daily_calorie_goal", 2000)
+        welcome_text = f"""
+🍽️ *Вітаю, {user.first_name}!*
+
+Твоя денна норма: *{int(daily_goal)} ккал*
 
 *Що я вмію:*
 📸 Аналізувати фото їжі через AI
@@ -85,13 +103,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ⏰ Нагадувати про прийоми їжі
 🤖 Аналізувати харчування за тиждень
 
-*Як користуватися:*
-1️⃣ Налаштуй свій профіль (вік, вага, ціль)
-2️⃣ Додавай прийоми їжі через камеру
-3️⃣ Стеж за прогресом у дашборді
-4️⃣ Отримуй AI-рекомендації
-
-*Почни з налаштувань, щоб я розрахував твою норму калорій!*
+*Почни з додавання першого прийому їжі!*
 """
     
     await update.message.reply_text(
@@ -242,27 +254,59 @@ async def settings_page():
                 <select id="gender"><option>male</option><option>female</option></select>
                 <input type="number" id="height" placeholder="Зріст">
                 <input type="number" id="weight" placeholder="Вага">
+                <select id="activityLevel">
+                    <option value="sedentary">Сидячий</option>
+                    <option value="light">Легкий</option>
+                    <option value="moderate">Помірний</option>
+                    <option value="active">Високий</option>
+                </select>
+                <select id="goal">
+                    <option value="lose">Схуднення</option>
+                    <option value="maintain">Підтримка</option>
+                    <option value="gain">Набір маси</option>
+                </select>
                 <button type="submit">Зберегти</button>
             </form>
             <script>
                 const telegramId = new URLSearchParams(window.location.search).get('user_id');
+                
+                async function loadProfile() {
+                    const response = await fetch(`/api/user/${telegramId}`);
+                    const data = await response.json();
+                    if (!data.error) {
+                        document.getElementById('age').value = data.age || '';
+                        document.getElementById('gender').value = data.gender || 'male';
+                        document.getElementById('height').value = data.height || '';
+                        document.getElementById('weight').value = data.weight || '';
+                        document.getElementById('activityLevel').value = data.activity_level || 'moderate';
+                        document.getElementById('goal').value = data.goal || 'maintain';
+                    }
+                }
+                
                 document.getElementById('profileForm').onsubmit = async (e) => {
                     e.preventDefault();
                     const profile = {
-                        age: document.getElementById('age').value,
+                        age: parseInt(document.getElementById('age').value),
                         gender: document.getElementById('gender').value,
-                        height: document.getElementById('height').value,
-                        weight: document.getElementById('weight').value,
-                        activity_level: 'moderate',
-                        goal: 'maintain'
+                        height: parseInt(document.getElementById('height').value),
+                        weight: parseFloat(document.getElementById('weight').value),
+                        activity_level: document.getElementById('activityLevel').value,
+                        goal: document.getElementById('goal').value
                     };
-                    await fetch(`/api/user/${telegramId}`, {
+                    const response = await fetch(`/api/user/${telegramId}`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify(profile)
                     });
-                    alert('Збережено!');
+                    if (response.ok) {
+                        alert('✅ Профіль збережено!');
+                        window.location.href = `/?user_id=${telegramId}`;
+                    } else {
+                        alert('❌ Помилка збереження');
+                    }
                 };
+                
+                loadProfile();
             </script>
         </body>
         </html>
@@ -279,9 +323,9 @@ async def get_user(telegram_id: int):
         if supabase is None:
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
-        response = supabase.table("users").select("*").eq("telegram_id", telegram_id).execute()
-        if response.data:
-            return JSONResponse(response.data[0])
+        profile = get_user_profile(telegram_id)
+        if profile:
+            return JSONResponse(profile)
         return JSONResponse({"error": "User not found"}, status_code=404)
     except Exception as e:
         logger.error(f"Error getting user: {e}")
@@ -295,17 +339,9 @@ async def update_user(telegram_id: int, profile: dict):
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
         # Розраховуємо норму калорій
-        daily_calories = nutrition_calculator.calculate_tdee({
-            "age": profile.get("age", 25),
-            "gender": profile.get("gender", "male"),
-            "height": profile.get("height", 170),
-            "weight": profile.get("weight", 70),
-            "activity_level": profile.get("activity_level", "moderate"),
-            "goal": profile.get("goal", "maintain")
-        })
+        daily_calories = nutrition_calculator.calculate_tdee(profile)
         
-        data = {
-            "telegram_id": telegram_id,
+        profile_data = {
             "age": profile.get("age"),
             "gender": profile.get("gender"),
             "height": profile.get("height"),
@@ -316,16 +352,8 @@ async def update_user(telegram_id: int, profile: dict):
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        # Перевіряємо чи існує користувач
-        existing = supabase.table("users").select("*").eq("telegram_id", telegram_id).execute()
-        
-        if existing.data:
-            response = supabase.table("users").update(data).eq("telegram_id", telegram_id).execute()
-        else:
-            data["created_at"] = datetime.utcnow().isoformat()
-            response = supabase.table("users").insert(data).execute()
-        
-        return JSONResponse(response.data[0] if response.data else {})
+        result = save_user_profile(telegram_id, profile_data)
+        return JSONResponse(result or {})
     except Exception as e:
         logger.error(f"Error updating user: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -337,15 +365,8 @@ async def get_meals(telegram_id: int, date: Optional[str] = None):
         if supabase is None:
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
-        if not date:
-            date = datetime.utcnow().date().isoformat()
-        
-        start_date = f"{date}T00:00:00"
-        end_date = f"{date}T23:59:59"
-        
-        response = supabase.table("meals").select("*").eq("telegram_id", telegram_id).gte("created_at", start_date).lte("created_at", end_date).order("created_at", desc=True).execute()
-        
-        return JSONResponse(response.data)
+        meals = get_today_meals(telegram_id)
+        return JSONResponse(meals)
     except Exception as e:
         logger.error(f"Error getting meals: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -371,8 +392,8 @@ async def create_meal(meal: dict):
         if supabase is None:
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
+        telegram_id = meal.get("telegram_id")
         meal_data = {
-            "telegram_id": meal.get("telegram_id"),
             "photo_url": meal.get("photo_url"),
             "name": meal.get("name"),
             "calories": meal.get("calories"),
@@ -383,11 +404,51 @@ async def create_meal(meal: dict):
             "created_at": datetime.utcnow().isoformat()
         }
         
-        response = supabase.table("meals").insert(meal_data).execute()
+        result = save_meal(telegram_id, meal_data)
         
-        return JSONResponse(response.data[0] if response.data else {})
+        # Оновлюємо статистику для користувача
+        if result:
+            # Отримуємо сьогоднішні прийоми
+            today_meals = get_today_meals(telegram_id)
+            user_profile = get_user_profile(telegram_id)
+            
+            if user_profile:
+                summary = nutrition_calculator.get_daily_summary(today_meals, user_profile)
+                logger.info(f"User {telegram_id} daily summary: {summary}")
+        
+        return JSONResponse(result or {})
     except Exception as e:
         logger.error(f"Error creating meal: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/daily-summary/{telegram_id}")
+async def get_daily_summary(telegram_id: int):
+    """Отримати денну статистику"""
+    try:
+        if supabase is None:
+            return JSONResponse({"error": "Database not initialized"}, status_code=500)
+        
+        meals = get_today_meals(telegram_id)
+        user_profile = get_user_profile(telegram_id)
+        
+        if not user_profile:
+            return JSONResponse({"error": "User profile not found"}, status_code=404)
+        
+        summary = nutrition_calculator.get_daily_summary(meals, user_profile)
+        
+        # Додаємо рекомендації
+        if gemini_service and meals:
+            try:
+                # Формуємо коротку рекомендацію на основі останнього прийому
+                last_meal = meals[0] if meals else None
+                if last_meal and last_meal.get("feedback"):
+                    summary["last_recommendation"] = last_meal.get("feedback")
+            except Exception as e:
+                logger.error(f"Error generating recommendation: {e}")
+        
+        return JSONResponse(summary)
+    except Exception as e:
+        logger.error(f"Error getting daily summary: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/weekly-report/{telegram_id}")
@@ -397,11 +458,7 @@ async def get_weekly_report(telegram_id: int):
         if supabase is None:
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
-        week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
-        
-        response = supabase.table("meals").select("*").eq("telegram_id", telegram_id).gte("created_at", week_ago).execute()
-        
-        meals = response.data
+        meals = get_weekly_meals(telegram_id)
         
         if not meals:
             return JSONResponse({"error": "No meals found for the last week"}, status_code=404)
@@ -420,8 +477,7 @@ async def get_weekly_report(telegram_id: int):
         }
         
         # Отримуємо профіль користувача
-        user_response = supabase.table("users").select("*").eq("telegram_id", telegram_id).execute()
-        user_profile = user_response.data[0] if user_response.data else None
+        user_profile = get_user_profile(telegram_id)
         
         # Генеруємо AI аналіз
         ai_analysis = "📊 *Тижневий звіт*\n\n"
@@ -455,31 +511,20 @@ async def set_notifications(telegram_id: int, times: List[str]):
         if supabase is None:
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
-        supabase.table("notifications").delete().eq("telegram_id", telegram_id).execute()
-        
-        for time_str in times:
-            data = {
-                "telegram_id": telegram_id,
-                "notification_time": time_str,
-                "is_active": True,
-                "created_at": datetime.utcnow().isoformat()
-            }
-            supabase.table("notifications").insert(data).execute()
-        
-        return JSONResponse({"status": "success", "times": times})
+        result = save_notifications(telegram_id, times)
+        return JSONResponse({"status": "success" if result else "error", "times": times})
     except Exception as e:
         logger.error(f"Error setting notifications: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/notifications/{telegram_id}")
-async def get_notifications(telegram_id: int):
+async def get_notifications_endpoint(telegram_id: int):
     """Отримати налаштування нагадувань"""
     try:
         if supabase is None:
             return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
-        response = supabase.table("notifications").select("*").eq("telegram_id", telegram_id).execute()
-        times = [n.get("notification_time") for n in response.data if n.get("is_active")]
+        times = get_notifications(telegram_id)
         return JSONResponse({"times": times})
     except Exception as e:
         logger.error(f"Error getting notifications: {e}")
