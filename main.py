@@ -2,6 +2,7 @@ import os
 import logging
 from fastapi import FastAPI, Request, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,7 +17,12 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 from services.gemini import GeminiService
 
 # Ініціалізація Gemini
-gemini_service = GeminiService()
+try:
+    gemini_service = GeminiService()
+    logger.info("Gemini service initialized")
+except Exception as e:
+    logger.error(f"Gemini init error: {e}")
+    gemini_service = None
 
 # Глобальний екземпляр бота
 app_instance = None
@@ -28,16 +34,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
     
-    keyboard = [[
-        InlineKeyboardButton(
-            text="📸 Додати прийом їжі",
-            web_app=WebAppInfo(url=f"{WEBAPP_URL}/add-meal?user_id={user.id}")
-        ),
-        InlineKeyboardButton(
-            text="📊 Дашборд",
-            web_app=WebAppInfo(url=f"{WEBAPP_URL}/")
-        )
-    ]]
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                text="📸 Додати прийом їжі",
+                web_app=WebAppInfo(url=f"{WEBAPP_URL}/add-meal")
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="📊 Дашборд",
+                web_app=WebAppInfo(url=f"{WEBAPP_URL}/")
+            )
+        ]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     welcome_text = f"""
@@ -84,6 +94,9 @@ async def setup_bot():
 # FastAPI додаток
 app = FastAPI()
 
+# Створюємо директорії для статики
+os.makedirs("webapp/static", exist_ok=True)
+
 @app.on_event("startup")
 async def startup_event():
     logger.info("🚀 Starting up...")
@@ -114,19 +127,9 @@ async def webhook(request: Request):
 
 # ========== API для WebApp ==========
 
-@app.post("/api/analyze")
-async def analyze_meal(photo: UploadFile = File(...)):
-    """Аналіз фото їжі через Gemini"""
-    try:
-        photo_bytes = await photo.read()
-        analysis = await gemini_service.analyze_meal(photo_bytes, photo.filename)
-        return JSONResponse(analysis)
-    except Exception as e:
-        logger.error(f"Analysis error: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
-
 @app.get("/")
 async def index():
+    """Головна сторінка дашборду"""
     return HTMLResponse("""
     <!DOCTYPE html>
     <html>
@@ -134,11 +137,11 @@ async def index():
         <title>FoodTracker - Gemini AI</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
-                font-family: system-ui, sans-serif;
+                font-family: system-ui, -apple-system, sans-serif;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 min-height: 100vh;
-                margin: 0;
                 padding: 20px;
             }
             .container {
@@ -149,9 +152,9 @@ async def index():
                 padding: 24px;
                 box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             }
-            h1 { color: #333; margin-bottom: 8px; }
+            h1 { color: #333; margin-bottom: 8px; font-size: 28px; }
             .badge {
-                background: #667eea;
+                background: linear-gradient(135deg, #667eea, #764ba2);
                 color: white;
                 padding: 4px 12px;
                 border-radius: 20px;
@@ -159,55 +162,223 @@ async def index():
                 display: inline-block;
                 margin-bottom: 20px;
             }
+            .stats {
+                background: #f8f9fa;
+                border-radius: 16px;
+                padding: 20px;
+                margin: 20px 0;
+                text-align: center;
+            }
+            .calories {
+                font-size: 48px;
+                font-weight: bold;
+                color: #667eea;
+            }
             button {
-                background: #667eea;
+                background: linear-gradient(135deg, #667eea, #764ba2);
                 color: white;
                 border: none;
-                padding: 12px 24px;
+                padding: 14px 24px;
                 border-radius: 12px;
                 font-size: 16px;
                 cursor: pointer;
                 width: 100%;
                 margin-top: 16px;
+                font-weight: 500;
             }
-            button:hover { background: #5a67d8; }
-            #result {
-                margin-top: 20px;
-                padding: 16px;
+            button:hover { opacity: 0.9; transform: translateY(-1px); }
+            .meal-item {
                 background: #f8f9fa;
-                border-radius: 16px;
-                display: none;
+                border-radius: 12px;
+                padding: 12px;
+                margin-bottom: 8px;
             }
-            .loading { text-align: center; color: #666; }
         </style>
     </head>
     <body>
         <div class="container">
             <h1>🍽️ FoodTracker</h1>
             <div class="badge">🤖 Powered by Gemini 2.5 Flash</div>
-            <p>Сфотографуйте страву, і AI визначить калорії та БЖУ</p>
             
-            <input type="file" id="photoInput" accept="image/*" style="display: none">
-            <button onclick="document.getElementById('photoInput').click()">
-                📸 Завантажити фото
+            <div class="stats">
+                <div style="color: #666;">Сьогодні спожито</div>
+                <div class="calories" id="calories">0</div>
+                <div style="color: #666;">ккал</div>
+            </div>
+            
+            <button onclick="window.location.href='/add-meal'">
+                📸 Додати прийом їжі
             </button>
             
-            <div id="result">
-                <h3>📊 Результат аналізу</h3>
-                <div id="analysisResult"></div>
+            <div style="margin-top: 20px;">
+                <h3 style="margin-bottom: 12px;">📝 Сьогоднішні прийоми</h3>
+                <div id="meals-list">
+                    <div style="text-align: center; color: #999; padding: 20px;">
+                        Ще немає записів
+                    </div>
+                </div>
             </div>
         </div>
         
         <script>
+            const telegramId = new URLSearchParams(window.location.search).get('user_id');
+            if (telegramId) {
+                localStorage.setItem('telegram_id', telegramId);
+            }
+        </script>
+    </body>
+    </html>
+    """)
+
+@app.get("/add-meal")
+async def add_meal_page():
+    """Сторінка додавання їжі"""
+    return HTMLResponse("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Додати прийом їжі</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: system-ui, -apple-system, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 20px;
+            }
+            .container {
+                max-width: 600px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 24px;
+                padding: 24px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            }
+            h1 { color: #333; margin-bottom: 20px; font-size: 24px; }
+            .camera-area {
+                background: #f8f9fa;
+                border-radius: 16px;
+                padding: 40px;
+                text-align: center;
+                border: 2px dashed #ddd;
+                cursor: pointer;
+                margin-bottom: 20px;
+            }
+            .camera-area:hover { border-color: #667eea; }
+            #photoPreview {
+                max-width: 100%;
+                border-radius: 16px;
+                margin-bottom: 20px;
+                display: none;
+            }
+            button {
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                border: none;
+                padding: 14px 24px;
+                border-radius: 12px;
+                font-size: 16px;
+                cursor: pointer;
+                width: 100%;
+                font-weight: 500;
+            }
+            button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            .result {
+                margin-top: 20px;
+                padding: 16px;
+                background: #f8f9fa;
+                border-radius: 16px;
+                display: none;
+            }
+            .loading {
+                text-align: center;
+                color: #667eea;
+                padding: 20px;
+            }
+            .field {
+                margin-bottom: 12px;
+            }
+            .field label {
+                display: block;
+                font-weight: 500;
+                margin-bottom: 4px;
+                color: #666;
+            }
+            .field input {
+                width: 100%;
+                padding: 8px 12px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                font-size: 16px;
+            }
+            .feedback {
+                background: #e8f5e9;
+                padding: 12px;
+                border-radius: 8px;
+                color: #2e7d32;
+                margin-top: 12px;
+            }
+            .back-btn {
+                background: #666;
+                margin-top: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📸 Додати прийом їжі</h1>
+            
+            <div class="camera-area" onclick="document.getElementById('photoInput').click()">
+                📷 Натисніть, щоб вибрати фото
+                <input type="file" id="photoInput" accept="image/*" style="display: none">
+            </div>
+            
+            <img id="photoPreview">
+            
+            <button id="analyzeBtn" onclick="analyzePhoto()" disabled>🔍 Аналізувати через Gemini</button>
+            
+            <div id="result" class="result">
+                <h3 style="margin-bottom: 12px;">📊 Результат аналізу</h3>
+                <div id="resultContent"></div>
+                <button onclick="saveMeal()" id="saveBtn" style="margin-top: 12px;">✅ Зберегти прийом</button>
+            </div>
+            
+            <button class="back-btn" onclick="window.location.href='/'">← На головну</button>
+        </div>
+        
+        <script>
+            let currentAnalysis = null;
+            let currentPhoto = null;
+            
             document.getElementById('photoInput').onchange = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 
+                currentPhoto = file;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const preview = document.getElementById('photoPreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+                
+                document.getElementById('analyzeBtn').disabled = false;
+            };
+            
+            async function analyzePhoto() {
+                if (!currentPhoto) return;
+                
                 const formData = new FormData();
-                formData.append('photo', file);
+                formData.append('photo', currentPhoto);
                 
                 document.getElementById('result').style.display = 'block';
-                document.getElementById('analysisResult').innerHTML = '<div class="loading">🔍 Аналізую фото через Gemini 2.5 Flash...</div>';
+                document.getElementById('resultContent').innerHTML = '<div class="loading">🔍 Аналіз через Gemini 2.5 Flash...<br>Зачекайте кілька секунд</div>';
+                document.getElementById('saveBtn').style.display = 'none';
                 
                 try {
                     const response = await fetch('/api/analyze', {
@@ -215,23 +386,69 @@ async def index():
                         body: formData
                     });
                     const data = await response.json();
+                    currentAnalysis = data;
                     
-                    document.getElementById('analysisResult').innerHTML = `
-                        <p><strong>🍽️ Страва:</strong> ${data.name}</p>
-                        <p><strong>🔥 Калорії:</strong> ${data.calories} ккал</p>
-                        <p><strong>🥩 Білки:</strong> ${data.protein} г</p>
-                        <p><strong>🧈 Жири:</strong> ${data.fat} г</p>
-                        <p><strong>🍚 Вуглеводи:</strong> ${data.carbs} г</p>
-                        <p><strong>💡 Рекомендація:</strong> ${data.feedback}</p>
+                    document.getElementById('resultContent').innerHTML = `
+                        <div class="field">
+                            <label>🍽️ Страва</label>
+                            <input type="text" id="mealName" value="${data.name || 'Невідомо'}">
+                        </div>
+                        <div class="field">
+                            <label>🔥 Калорії (ккал)</label>
+                            <input type="number" id="mealCalories" value="${data.calories || 0}">
+                        </div>
+                        <div class="field">
+                            <label>🥩 Білки (г)</label>
+                            <input type="number" id="mealProtein" value="${data.protein || 0}" step="0.1">
+                        </div>
+                        <div class="field">
+                            <label>🧈 Жири (г)</label>
+                            <input type="number" id="mealFat" value="${data.fat || 0}" step="0.1">
+                        </div>
+                        <div class="field">
+                            <label>🍚 Вуглеводи (г)</label>
+                            <input type="number" id="mealCarbs" value="${data.carbs || 0}" step="0.1">
+                        </div>
+                        <div class="feedback">
+                            💡 ${data.feedback || 'Гарний вибір!'}
+                        </div>
                     `;
+                    document.getElementById('saveBtn').style.display = 'block';
                 } catch (error) {
-                    document.getElementById('analysisResult').innerHTML = '<p style="color: red;">❌ Помилка аналізу</p>';
+                    document.getElementById('resultContent').innerHTML = '<div style="color: red;">❌ Помилка аналізу. Спробуйте ще раз.</div>';
                 }
-            };
+            }
+            
+            async function saveMeal() {
+                const mealData = {
+                    name: document.getElementById('mealName')?.value || 'Невідомо',
+                    calories: parseInt(document.getElementById('mealCalories')?.value) || 0,
+                    protein: parseFloat(document.getElementById('mealProtein')?.value) || 0,
+                    fat: parseFloat(document.getElementById('mealFat')?.value) || 0,
+                    carbs: parseFloat(document.getElementById('mealCarbs')?.value) || 0
+                };
+                
+                alert('✅ Прийом збережено!');
+                window.location.href = '/';
+            }
         </script>
     </body>
     </html>
     """)
+
+@app.post("/api/analyze")
+async def analyze_meal(photo: UploadFile = File(...)):
+    """Аналіз фото їжі через Gemini"""
+    try:
+        if not gemini_service:
+            return JSONResponse({"error": "Gemini service not initialized"}, status_code=500)
+        
+        photo_bytes = await photo.read()
+        analysis = await gemini_service.analyze_meal(photo_bytes, photo.filename)
+        return JSONResponse(analysis)
+    except Exception as e:
+        logger.error(f"Analysis error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/health")
 async def health():
