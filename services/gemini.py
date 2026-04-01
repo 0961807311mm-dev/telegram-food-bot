@@ -18,12 +18,11 @@ class GeminiService:
         
         genai.configure(api_key=api_key)
         
-        # Спробуй різні моделі
+        # Використовуємо правильні назви моделей
         self.model_names = [
+            'gemini-2.0-flash',
             'gemini-1.5-flash',
-            'gemini-1.5-pro',
-            'gemini-pro-vision',
-            'gemini-2.0-flash-exp'
+            'gemini-pro'
         ]
         self.model = None
         
@@ -49,54 +48,34 @@ class GeminiService:
         try:
             # Відкриваємо фото
             image = Image.open(io.BytesIO(photo_bytes))
-            logger.info(f"Photo size: {image.size}, mode: {image.mode}")
             
             # Конвертуємо в RGB якщо потрібно
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # Стискаємо для швидкості
+            # Стискаємо
             max_size = 1024
             if image.size[0] > max_size or image.size[1] > max_size:
                 image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
-                logger.info(f"Resized to: {image.size}")
-            
-            # Зберігаємо в байти
-            img_byte_arr = io.BytesIO()
-            image.save(img_byte_arr, format='JPEG', quality=85)
-            img_byte_arr = img_byte_arr.getvalue()
             
             # Промпт
-            prompt = """Analyze this food photo. Return ONLY valid JSON (no markdown, no other text):
+            prompt = """Analyze this food photo. Return ONLY valid JSON:
 {
     "name": "dish name in Ukrainian",
-    "calories": estimated calories (number),
-    "protein": protein in grams (number),
-    "fat": fat in grams (number),
-    "carbs": carbs in grams (number),
-    "feedback": "short recommendation in Ukrainian (1 sentence)"
-}
-
-If you cannot identify the food, return:
-{
-    "name": "Невідомо",
-    "calories": 0,
-    "protein": 0,
-    "fat": 0,
-    "carbs": 0,
-    "feedback": "Не вдалося розпізнати страву. Спробуйте краще освітлення."
+    "calories": number,
+    "protein": number,
+    "fat": number,
+    "carbs": number,
+    "feedback": "recommendation in Ukrainian"
 }"""
             
             # Запит до Gemini
             loop = asyncio.get_event_loop()
             response = await asyncio.wait_for(
-                loop.run_in_executor(None, lambda: self.model.generate_content([prompt, img_byte_arr])),
+                loop.run_in_executor(None, lambda: self.model.generate_content([prompt, image])),
                 timeout=20.0
             )
             
-            logger.info(f"Gemini raw response: {response.text[:300]}")
-            
-            # Парсимо JSON
             text = response.text.strip()
             
             # Очищаємо від markdown
@@ -104,7 +83,6 @@ If you cannot identify the food, return:
             text = re.sub(r'^```\s*', '', text)
             text = re.sub(r'\s*```$', '', text)
             
-            # Знаходимо JSON
             json_match = re.search(r'\{[^{}]*\}', text, re.DOTALL)
             if json_match:
                 text = json_match.group()
@@ -121,20 +99,17 @@ If you cannot identify the food, return:
             }
             
         except asyncio.TimeoutError:
-            logger.error("Gemini timeout after 20s")
-            return self._get_default_analysis()
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON parse error: {e}")
+            logger.error("Gemini timeout")
             return self._get_default_analysis()
         except Exception as e:
-            logger.error(f"Gemini API error: {e}", exc_info=True)
+            logger.error(f"Gemini API error: {e}")
             return self._get_default_analysis()
     
     async def analyze_weekly(self, meals: List[Dict], averages: Dict, user_profile: Dict) -> str:
         """Аналіз тижневого харчування"""
         try:
             prompt = f"""
-            Ти експерт-нутриціолог. Проаналізуй харчування за тиждень.
+            Проаналізуй харчування за тиждень.
             
             Середні показники за день:
             - Калорії: {averages.get('calories', 0):.0f} ккал
@@ -145,25 +120,13 @@ If you cannot identify the food, return:
             
             if user_profile:
                 prompt += f"""
-                
-                Ваші дані:
-                - Вік: {user_profile.get('age')}
-                - Стать: {user_profile.get('gender')}
-                - Вага: {user_profile.get('weight')} кг
-                - Зріст: {user_profile.get('height')} см
-                - Ціль: {user_profile.get('goal')}
+                Дані користувача:
+                - Вага: {user_profile.get('weight')} кг, Ціль: {user_profile.get('goal')}
                 - Норма калорій: {user_profile.get('daily_calorie_goal')} ккал
                 """
             
             prompt += """
-            
-            Напиши детальний аналіз українською мовою:
-            1. Оцінка загального харчування
-            2. Аналіз макронутрієнтів
-            3. Яких мікроелементів може не вистачати
-            4. 3 конкретні рекомендації на наступний тиждень
-            
-            Використовуй емодзі та дружній стиль.
+            Напиши короткий аналіз українською (3-5 речень) з рекомендаціями.
             """
             
             loop = asyncio.get_event_loop()
@@ -176,7 +139,7 @@ If you cannot identify the food, return:
             
         except Exception as e:
             logger.error(f"Weekly analysis error: {e}")
-            return "📊 Не вдалося згенерувати аналіз. Спробуйте пізніше."
+            return "📊 Не вдалося згенерувати аналіз."
     
     def _get_default_analysis(self) -> Dict[str, Any]:
         return {
@@ -185,5 +148,5 @@ If you cannot identify the food, return:
             "protein": 0,
             "fat": 0,
             "carbs": 0,
-            "feedback": "❌ Не вдалося розпізнати страву. Спробуйте сфотографувати з кращим освітленням."
+            "feedback": "❌ Не вдалося розпізнати страву. Спробуйте краще освітлення."
         }
