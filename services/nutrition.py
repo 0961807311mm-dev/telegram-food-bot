@@ -1,15 +1,7 @@
-# ============================================
-# Файл: services/nutrition.py
-# ============================================
-from typing import Dict, Any
-
 class NutritionCalculator:
     """Розрахунок норм харчування"""
     
-    def __init__(self):
-        pass
-    
-    def calculate_tdee(self, profile: Dict[str, Any]) -> float:
+    def calculate_tdee(self, profile: dict) -> float:
         """Розрахунок денної норми калорій (TDEE)"""
         age = profile.get("age", 25)
         gender = profile.get("gender", "male")
@@ -18,58 +10,73 @@ class NutritionCalculator:
         activity_level = profile.get("activity_level", "moderate")
         goal = profile.get("goal", "maintain")
         
-        # Розрахунок BMR (базальний метаболізм)
+        # BMR (базальний метаболізм)
         if gender == "male":
             bmr = 10 * weight + 6.25 * height - 5 * age + 5
         else:
             bmr = 10 * weight + 6.25 * height - 5 * age - 161
         
         # Коефіцієнт активності
-        activity_multipliers = {
-            "sedentary": 1.2,      # Сидячий спосіб життя
-            "light": 1.375,        # Легка активність 1-3 рази на тиждень
-            "moderate": 1.55,      # Помірна активність 3-5 разів на тиждень
-            "active": 1.725,       # Висока активність 6-7 разів на тиждень
-            "very_active": 1.9     # Дуже висока активність (фізична робота)
+        multipliers = {
+            "sedentary": 1.2,
+            "light": 1.375,
+            "moderate": 1.55,
+            "active": 1.725,
+            "very_active": 1.9
         }
         
-        tdee = bmr * activity_multipliers.get(activity_level, 1.55)
+        tdee = bmr * multipliers.get(activity_level, 1.55)
         
-        # Коригування залежно від цілі
+        # Коригування за ціллю
         goal_multipliers = {
-            "lose": 0.85,      # Дефіцит 15% для схуднення
-            "maintain": 1.0,    # Підтримка ваги
-            "gain": 1.15       # Профіцит 15% для набору маси
+            "lose": 0.85,
+            "maintain": 1.0,
+            "gain": 1.15
         }
         
-        daily_calories = tdee * goal_multipliers.get(goal, 1.0)
-        
-        return round(daily_calories, 0)
+        return round(tdee * goal_multipliers.get(goal, 1.0), 0)
     
-    def calculate_macros(self, calories: float, weight: float, goal: str) -> Dict[str, float]:
+    def calculate_macros(self, calories: float, weight: float, goal: str) -> dict:
         """Розрахунок БЖУ"""
-        # Білок: 1.6-2.2 г на кг ваги залежно від цілі
         if goal == "gain":
-            protein_per_kg = 2.0
+            protein_ratio = 2.0
         elif goal == "lose":
-            protein_per_kg = 2.2
+            protein_ratio = 2.2
         else:
-            protein_per_kg = 1.8
+            protein_ratio = 1.8
         
-        protein_grams = weight * protein_per_kg
-        protein_calories = protein_grams * 4
+        protein = round(weight * protein_ratio, 1)
+        protein_cal = protein * 4
         
-        # Жири: 25-30% від загальної калорійності
-        fat_percent = 0.28
-        fat_calories = calories * fat_percent
-        fat_grams = fat_calories / 9
+        fat = round((calories * 0.28) / 9, 1)
+        fat_cal = fat * 9
         
-        # Вуглеводи: залишок
-        carbs_calories = calories - protein_calories - fat_calories
-        carbs_grams = carbs_calories / 4
+        carbs = round((calories - protein_cal - fat_cal) / 4, 1)
+        
+        return {"protein": protein, "fat": fat, "carbs": carbs}
+    
+    def get_daily_summary(self, meals: list, user_profile: dict) -> dict:
+        """Отримати денну статистику"""
+        total_calories = sum(m.get("calories", 0) for m in meals)
+        total_protein = sum(m.get("protein", 0) for m in meals)
+        total_fat = sum(m.get("fat", 0) for m in meals)
+        total_carbs = sum(m.get("carbs", 0) for m in meals)
+        
+        goal_calories = user_profile.get("daily_calorie_goal", 2000) if user_profile else 2000
+        remaining = max(0, goal_calories - total_calories)
+        progress = (total_calories / goal_calories) * 100 if goal_calories > 0 else 0
         
         return {
-            "protein": round(protein_grams, 1),
-            "fat": round(fat_grams, 1),
-            "carbs": round(carbs_grams, 1)
+            "total": {
+                "calories": total_calories,
+                "protein": total_protein,
+                "fat": total_fat,
+                "carbs": total_carbs
+            },
+            "goal": {
+                "calories": goal_calories,
+                "remaining": remaining
+            },
+            "progress": min(progress, 100),
+            "meals_count": len(meals)
         }
