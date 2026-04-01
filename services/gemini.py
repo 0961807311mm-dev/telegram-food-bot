@@ -18,59 +18,99 @@ class GeminiService:
         
         genai.configure(api_key=api_key)
         
-        # Gemini 2.5 Flash (актуальна назва)
-        self.model = genai.GenerativeModel('gemini-2.5-flash')
-        logger.info("Gemini 2.5 Flash initialized")
+        # Спробуй різні моделі
+        self.model_names = [
+            'gemini-1.5-flash',
+            'gemini-1.5-pro',
+            'gemini-pro-vision',
+            'gemini-2.0-flash-exp'
+        ]
+        self.model = None
+        
+        # Знаходимо доступну модель
+        for name in self.model_names:
+            try:
+                self.model = genai.GenerativeModel(name)
+                # Тестуємо модель
+                test_response = self.model.generate_content("Test")
+                if test_response:
+                    logger.info(f"✅ Using Gemini model: {name}")
+                    break
+            except Exception as e:
+                logger.warning(f"Model {name} not available: {e}")
+                continue
+        
+        if not self.model:
+            logger.error("No Gemini model available!")
+            raise ValueError("No Gemini model available")
     
     async def analyze_meal(self, photo_bytes: bytes, filename: str) -> Dict[str, Any]:
-        """Аналіз фото їжі через Gemini 2.5 Flash"""
+        """Аналіз фото їжі через Gemini"""
         try:
-            # Відкриваємо та стискаємо фото
+            # Відкриваємо фото
             image = Image.open(io.BytesIO(photo_bytes))
+            logger.info(f"Photo size: {image.size}, mode: {image.mode}")
+            
+            # Конвертуємо в RGB якщо потрібно
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
             
             # Стискаємо для швидкості
-            if image.size[0] > 1024:
-                ratio = 1024 / image.size[0]
-                new_size = (1024, int(image.size[1] * ratio))
-                image = image.resize(new_size, Image.Resampling.LANCZOS)
+            max_size = 1024
+            if image.size[0] > max_size or image.size[1] > max_size:
+                image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+                logger.info(f"Resized to: {image.size}")
             
-            # Промпт для Gemini 2.5 Flash
-            prompt = """
-            Ти експерт-нутриціолог. Проаналізуй фото їжі.
+            # Зберігаємо в байти
+            img_byte_arr = io.BytesIO()
+            image.save(img_byte_arr, format='JPEG', quality=85)
+            img_byte_arr = img_byte_arr.getvalue()
             
-            Відповідай ТІЛЬКИ в форматі JSON (без markdown, без пояснень):
-            {"name": "назва страви", "calories": число, "protein": число, "fat": число, "carbs": число, "feedback": "коротка рекомендація українською"}
+            # Простий промпт
+            prompt = """Analyze this food photo. Return ONLY valid JSON (no markdown, no other text):
+{
+    "name": "dish name in Ukrainian",
+    "calories": estimated calories (number),
+    "protein": protein in grams (number),
+    "fat": fat in grams (number),
+    "carbs": carbs in grams (number),
+    "feedback": "short recommendation in Ukrainian (1 sentence)"
+}
+
+If you cannot identify the food, return:
+{
+    "name": "Невідомо",
+    "calories": 0,
+    "protein": 0,
+    "fat": 0,
+    "carbs": 0,
+    "feedback": "Не вдалося розпізнати страву. Спробуйте краще освітлення."
+}"""
             
-            Якщо страву не видно: calories=0, feedback="Не вдалося розпізнати страву"
-            """
-            
-            # Запит до Gemini з таймаутом
+            # Запит до Gemini
             loop = asyncio.get_event_loop()
             response = await asyncio.wait_for(
-                loop.run_in_executor(None, lambda: self.model.generate_content([prompt, image])),
-                timeout=15.0
+                loop.run_in_executor(None, lambda: self.model.generate_content([prompt, img_byte_arr])),
+                timeout=20.0
             )
             
-            # Парсимо відповідь
+            logger.info(f"Gemini raw response: {response.text[:300]}")
+            
+            # Парсимо JSON
             text = response.text.strip()
-            logger.info(f"Gemini response: {text[:200]}")  # Лог для відладки
             
             # Очищаємо від markdown
-            if text.startswith("```json"):
-                text = text[7:]
-            if text.startswith("```"):
-                text = text[3:]
-            if text.endswith("```"):
-                text = text[:-3]
+            text = re.sub(r'^```json\s*', '', text)
+            text = re.sub(r'^```\s*', '', text)
+            text = re.sub(r'\s*```$', '', text)
             
             # Знаходимо JSON
-            json_match = re.search(r'\{.*\}', text, re.DOTALL)
+            json_match = re.search(r'\{[^{}]*\}', text, re.DOTALL)
             if json_match:
                 text = json_match.group()
             
             analysis = json.loads(text)
             
-            # Валідація
             return {
                 "name": analysis.get("name", "Невідомо"),
                 "calories": max(0, int(analysis.get("calories", 0))),
@@ -81,13 +121,14 @@ class GeminiService:
             }
             
         except asyncio.TimeoutError:
-            logger.error("Gemini timeout")
+            logger.error("Gemini timeout after 20s")
             return self._get_default_analysis()
         except json.JSONDecodeError as e:
-            logger.error(f"JSON parse error: {e}, response: {text[:200]}")
+            logger.error(f"JSON parse error: {e}")
+            logger.error(f"Raw text: {text[:500] if 'text' in locals() else 'no text'}")
             return self._get_default_analysis()
         except Exception as e:
-            logger.error(f"Gemini API error: {e}")
+            logger.error(f"Gemini API error: {e}", exc_info=True)
             return self._get_default_analysis()
     
     def _get_default_analysis(self) -> Dict[str, Any]:
@@ -97,5 +138,5 @@ class GeminiService:
             "protein": 0,
             "fat": 0,
             "carbs": 0,
-            "feedback": "❌ Не вдалося розпізнати страву. Спробуйте сфотографувати краще."
+            "feedback": "❌ Не вдалося розпізнати страву. Спробуйте сфотографувати з кращим освітленням."
         }
