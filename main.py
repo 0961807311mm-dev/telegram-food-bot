@@ -1,5 +1,5 @@
 # ============================================
-# Файл: main.py (ПОВНИЙ З ЛОГУВАННЯМ)
+# Файл: main.py (ФІНАЛЬНИЙ РОБОЧИЙ)
 # ============================================
 import os
 import logging
@@ -198,10 +198,34 @@ async def index():
         return HTMLResponse("""
         <!DOCTYPE html>
         <html>
-        <head><title>FoodTracker</title></head>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>FoodTracker</title>
+            <style>
+                body { font-family: system-ui; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; margin: 0; padding: 20px; }
+                .card { max-width: 500px; margin: 0 auto; background: white; border-radius: 24px; padding: 24px; text-align: center; }
+                .calories { font-size: 48px; font-weight: bold; color: #667eea; }
+                button { background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 12px; margin-top: 16px; cursor: pointer; width: 100%; }
+            </style>
+        </head>
         <body>
-            <h1>🍽️ FoodTracker</h1>
-            <p>Бот працює! Відкрийте Telegram та надішліть /start</p>
+            <div class="card">
+                <h1>🍽️ FoodTracker</h1>
+                <p>Бот працює! Відкрийте Telegram та надішліть /start</p>
+                <div class="calories" id="calories">0</div>
+                <button onclick="window.location.href='/add-meal'">📸 Додати прийом</button>
+            </div>
+            <script>
+                const telegramId = new URLSearchParams(window.location.search).get('user_id');
+                if (telegramId) {
+                    fetch(`/api/meals/${telegramId}`).then(r => r.json()).then(meals => {
+                        let total = 0;
+                        meals.forEach(m => total += m.calories || 0);
+                        document.getElementById('calories').innerText = total + ' ккал';
+                    });
+                }
+            </script>
         </body>
         </html>
         """)
@@ -217,20 +241,82 @@ async def add_meal_page():
         return HTMLResponse("""
         <!DOCTYPE html>
         <html>
-        <head><title>Додати прийом</title></head>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Додати прийом</title>
+            <style>
+                body { font-family: system-ui; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; margin: 0; padding: 20px; }
+                .card { max-width: 500px; margin: 0 auto; background: white; border-radius: 24px; padding: 24px; }
+                input, button { width: 100%; padding: 12px; margin-top: 12px; border-radius: 12px; border: 1px solid #ddd; }
+                button { background: #667eea; color: white; border: none; cursor: pointer; }
+                #result { margin-top: 20px; padding: 16px; background: #f8f9fa; border-radius: 12px; display: none; }
+            </style>
+        </head>
         <body>
-            <h1>📸 Додати прийом їжі</h1>
-            <input type="file" id="photo" accept="image/*">
-            <button onclick="analyze()">Аналізувати</button>
-            <div id="result"></div>
+            <div class="card">
+                <h1>📸 Додати прийом їжі</h1>
+                <input type="file" id="photo" accept="image/*">
+                <button onclick="analyze()">🔍 Аналізувати через Gemini</button>
+                <div id="result"></div>
+                <button onclick="window.location.href='/'">← На головну</button>
+            </div>
             <script>
+                const telegramId = new URLSearchParams(window.location.search).get('user_id');
+                
                 async function analyze() {
                     const file = document.getElementById('photo').files[0];
+                    if (!file) return;
+                    
                     const formData = new FormData();
                     formData.append('photo', file);
-                    const response = await fetch('/api/analyze', {method: 'POST', body: formData});
-                    const data = await response.json();
-                    document.getElementById('result').innerHTML = JSON.stringify(data);
+                    
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = '<div style="text-align: center;">🔍 Аналізую фото через Gemini 2.5 Flash...</div>';
+                    
+                    try {
+                        const response = await fetch('/api/analyze', {method: 'POST', body: formData});
+                        const data = await response.json();
+                        
+                        resultDiv.innerHTML = `
+                            <h3>📊 Результат аналізу</h3>
+                            <p><strong>🍽️ Страва:</strong> ${data.name}</p>
+                            <p><strong>🔥 Калорії:</strong> ${data.calories} ккал</p>
+                            <p><strong>🥩 Білки:</strong> ${data.protein} г</p>
+                            <p><strong>🧈 Жири:</strong> ${data.fat} г</p>
+                            <p><strong>🍚 Вуглеводи:</strong> ${data.carbs} г</p>
+                            <p><strong>💡 Рекомендація:</strong> ${data.feedback}</p>
+                            <button onclick="saveMeal(${JSON.stringify(data).replace(/"/g, '&quot;')})">✅ Зберегти прийом</button>
+                        `;
+                    } catch (error) {
+                        resultDiv.innerHTML = '<p style="color: red;">❌ Помилка аналізу. Спробуйте ще раз.</p>';
+                    }
+                }
+                
+                async function saveMeal(data) {
+                    const mealData = {
+                        telegram_id: parseInt(telegramId),
+                        name: data.name,
+                        calories: data.calories,
+                        protein: data.protein,
+                        fat: data.fat,
+                        carbs: data.carbs,
+                        feedback: data.feedback
+                    };
+                    
+                    const response = await fetch('/api/meals', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(mealData)
+                    });
+                    
+                    if (response.ok) {
+                        alert('✅ Прийом збережено!');
+                        window.location.href = `/?user_id=${telegramId}`;
+                    } else {
+                        alert('❌ Помилка збереження');
+                    }
                 }
             </script>
         </body>
@@ -248,31 +334,62 @@ async def settings_page():
         return HTMLResponse("""
         <!DOCTYPE html>
         <html>
-        <head><title>Налаштування</title></head>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Налаштування</title>
+            <style>
+                body { font-family: system-ui; background: linear-gradient(135deg, #667eea, #764ba2); min-height: 100vh; margin: 0; padding: 20px; }
+                .card { max-width: 500px; margin: 0 auto; background: white; border-radius: 24px; padding: 24px; }
+                input, select, button { width: 100%; padding: 12px; margin-top: 12px; border-radius: 12px; border: 1px solid #ddd; }
+                button { background: #667eea; color: white; border: none; cursor: pointer; }
+                label { display: block; margin-top: 12px; font-weight: 500; }
+            </style>
+        </head>
         <body>
-            <h1>⚙️ Налаштування</h1>
-            <form id="profileForm">
-                <input type="number" id="age" placeholder="Вік">
-                <select id="gender"><option>male</option><option>female</option></select>
-                <input type="number" id="height" placeholder="Зріст">
-                <input type="number" id="weight" placeholder="Вага">
-                <select id="activityLevel">
-                    <option value="sedentary">Сидячий</option>
-                    <option value="light">Легкий</option>
-                    <option value="moderate">Помірний</option>
-                    <option value="active">Високий</option>
-                </select>
-                <select id="goal">
-                    <option value="lose">Схуднення</option>
-                    <option value="maintain">Підтримка</option>
-                    <option value="gain">Набір маси</option>
-                </select>
-                <button type="submit">Зберегти</button>
-            </form>
+            <div class="card">
+                <h1>⚙️ Налаштування профілю</h1>
+                <form id="profileForm">
+                    <label>Вік (років)</label>
+                    <input type="number" id="age" placeholder="25">
+                    
+                    <label>Стать</label>
+                    <select id="gender">
+                        <option value="male">Чоловік</option>
+                        <option value="female">Жінка</option>
+                    </select>
+                    
+                    <label>Зріст (см)</label>
+                    <input type="number" id="height" placeholder="170">
+                    
+                    <label>Вага (кг)</label>
+                    <input type="number" id="weight" step="0.1" placeholder="70">
+                    
+                    <label>Рівень активності</label>
+                    <select id="activityLevel">
+                        <option value="sedentary">Сидячий (офісна робота)</option>
+                        <option value="light">Легкий (1-3 тренування)</option>
+                        <option value="moderate">Помірний (3-5 тренувань)</option>
+                        <option value="active">Високий (6-7 тренувань)</option>
+                        <option value="very_active">Дуже високий (фізична робота)</option>
+                    </select>
+                    
+                    <label>Моя ціль</label>
+                    <select id="goal">
+                        <option value="lose">🏃 Схуднення</option>
+                        <option value="maintain">⚖️ Підтримка ваги</option>
+                        <option value="gain">💪 Набір м'язової маси</option>
+                    </select>
+                    
+                    <button type="submit">💾 Зберегти зміни</button>
+                </form>
+                <button onclick="window.location.href='/'">← На головну</button>
+            </div>
             <script>
                 const telegramId = new URLSearchParams(window.location.search).get('user_id');
                 
                 async function loadProfile() {
+                    if (!telegramId) return;
                     const response = await fetch(`/api/user/${telegramId}`);
                     const data = await response.json();
                     if (!data.error) {
@@ -295,11 +412,13 @@ async def settings_page():
                         activity_level: document.getElementById('activityLevel').value,
                         goal: document.getElementById('goal').value
                     };
+                    
                     const response = await fetch(`/api/user/${telegramId}`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify(profile)
                     });
+                    
                     if (response.ok) {
                         alert('✅ Профіль збережено!');
                         window.location.href = `/?user_id=${telegramId}`;
@@ -309,7 +428,7 @@ async def settings_page():
                     }
                 };
                 
-                if (telegramId) loadProfile();
+                loadProfile();
             </script>
         </body>
         </html>
@@ -356,14 +475,20 @@ async def update_user(telegram_id: int, profile: dict):
         age = profile.get("age")
         if age is not None:
             age = int(age)
+        else:
+            age = 25
         
         height = profile.get("height")
         if height is not None:
             height = int(height)
+        else:
+            height = 170
         
         weight = profile.get("weight")
         if weight is not None:
             weight = float(weight)
+        else:
+            weight = 70
         
         # Підготовка даних для розрахунку
         profile_data = {
@@ -375,7 +500,7 @@ async def update_user(telegram_id: int, profile: dict):
             "goal": profile.get("goal", "maintain"),
         }
         
-        logger.info(f"Processed profile data for calculation: {profile_data}")
+        logger.info(f"Processed profile data: {profile_data}")
         
         # Розраховуємо норму калорій
         daily_calories = nutrition_calculator.calculate_tdee(profile_data)
@@ -392,7 +517,7 @@ async def update_user(telegram_id: int, profile: dict):
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        logger.info(f"Final user data to save: {user_data}")
+        logger.info(f"Final user data: {user_data}")
         
         result = save_user_profile(telegram_id, user_data)
         
@@ -605,6 +730,26 @@ async def get_notifications_endpoint(telegram_id: int):
     except Exception as e:
         logger.error(f"❌ Error getting notifications: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/test-db")
+async def test_db():
+    """Тест підключення до бази даних"""
+    try:
+        if supabase is None:
+            return JSONResponse({"error": "Supabase not initialized"}, status_code=500)
+        
+        # Спробуємо виконати простий запит
+        result = supabase.table("users").select("*").limit(1).execute()
+        return JSONResponse({
+            "status": "connected",
+            "tables_exist": True,
+            "message": "Database is working!"
+        })
+    except Exception as e:
+        return JSONResponse({
+            "status": "error",
+            "error": str(e)
+        }, status_code=500)
 
 # ============================================
 # HEALTH CHECK
