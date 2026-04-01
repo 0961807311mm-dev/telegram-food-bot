@@ -10,28 +10,14 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from telegram.ext import Application, CommandHandler
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.constants import ParseMode
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 _application = None
 
-async def get_application():
-    global _application
-    if _application is None:
-        if not BOT_TOKEN:
-            raise ValueError("BOT_TOKEN not set")
-        _application = Application.builder().token(BOT_TOKEN).build()
-        await _application.initialize()
-        
-        # Додаємо обробник ОДРАЗУ після ініціалізації
-        _application.add_handler(CommandHandler("start", start_command))
-        logger.info("Bot application created, initialized and handler added")
-        
-    return _application
-
-async def start_command(update: Update, context):
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         logger.info(f"✅ START_COMMAND CALLED - user: {update.effective_user.id}")
         user = update.effective_user
@@ -56,18 +42,40 @@ async def start_command(update: Update, context):
     except Exception as e:
         logger.error(f"❌ Error in start_command: {e}", exc_info=True)
 
+async def get_application():
+    global _application
+    if _application is None:
+        if not BOT_TOKEN:
+            raise ValueError("BOT_TOKEN not set")
+        
+        # Створюємо Application без Updater
+        _application = Application.builder().token(BOT_TOKEN).build()
+        
+        # Додаємо обробник
+        _application.add_handler(CommandHandler("start", start_command))
+        
+        # Ініціалізуємо
+        await _application.initialize()
+        
+        # Важливо: для webhook потрібно налаштувати бота
+        await _application.bot.set_webhook(
+            f"{os.getenv('WEBAPP_URL', 'https://telegram-food-bot-jedx.onrender.com')}/webhook"
+        )
+        
+        logger.info("Bot application created, initialized and webhook set")
+        
+        # Виводимо список обробників для перевірки
+        handlers_count = len(_application.handlers.get(0, []))
+        logger.info(f"Bot has {handlers_count} handlers for updates")
+        
+    return _application
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting bot...")
     
-    # Ініціалізуємо бота (обробник додається всередині get_application)
+    # Ініціалізуємо бота (webhook вже встановлюється всередині)
     bot = await get_application()
-    logger.info(f"Bot handlers: {[h.callback.__name__ for h in bot.handlers[0]]}")
-    
-    # Налаштовуємо вебхук
-    webhook_url = f"{os.getenv('WEBAPP_URL', 'https://telegram-food-bot-jedx.onrender.com')}/webhook"
-    await bot.bot.set_webhook(webhook_url)
-    logger.info(f"Webhook set to {webhook_url}")
     
     yield
     
@@ -80,13 +88,19 @@ app = FastAPI(lifespan=lifespan)
 @app.post("/webhook")
 async def webhook(request: Request):
     try:
+        # Отримуємо дані від Telegram
         update_data = await request.json()
         message_text = update_data.get('message', {}).get('text', 'no text')
         logger.info(f"📨 Received webhook update: {message_text}")
         
+        # Створюємо об'єкт Update
+        update = Update.de_json(update_data, None)
+        
         # Отримуємо бота і обробляємо оновлення
         bot = await get_application()
-        await bot.process_update(update_data)
+        
+        # Важливо: передаємо бота в update
+        await bot.process_update(update)
         
         return JSONResponse({"status": "ok"})
     except Exception as e:
