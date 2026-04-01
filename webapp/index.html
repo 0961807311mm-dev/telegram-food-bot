@@ -1,30 +1,372 @@
-<!-- ============================================ -->
-<!-- Файл: webapp/index.html -->
-<!-- ============================================ -->
 <!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>FoodTracker - Дашборд</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>FoodTracker Pro - AI Nutritionist</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        /* Головний контейнер */
+        .app-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        /* Хедер */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .settings-btn, .notify-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .date-info {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* Картка калорій */
+        .calorie-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            margin: 20px;
+            padding: 24px;
+            border-radius: 24px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .calorie-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .calorie-goal {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            background: rgba(255,255,255,0.3);
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+
+        .progress-fill {
+            background: white;
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 6px;
+        }
+
+        .calorie-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+
+        /* Картка макронутрієнтів */
+        .macros-card {
+            background: white;
+            margin: 20px;
+            padding: 20px;
+            border-radius: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .macros-card h3 {
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .macro-item {
+            margin-bottom: 16px;
+        }
+
+        .macro-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .macro-bar {
+            background: #e0e0e0;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .macro-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .protein-fill { background: #4caf50; }
+        .fat-fill { background: #ff9800; }
+        .carbs-fill { background: #2196f3; }
+
+        /* Кнопки дій */
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 20px;
+        }
+
+        .action-btn {
+            padding: 14px;
+            border: none;
+            border-radius: 28px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .add-meal-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .add-water-btn {
+            background: #e3f2fd;
+            color: #2196f3;
+        }
+
+        /* Секція прийомів їжі */
+        .meals-section {
+            margin: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .section-header h3 {
+            font-size: 18px;
+            color: #333;
+        }
+
+        .meal-item {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+        }
+
+        .meal-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .meal-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .meal-calories {
+            font-weight: 600;
+            color: #f5576c;
+        }
+
+        .meal-macros {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .meal-feedback {
+            background: #e8f5e9;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: #2e7d32;
+            margin-top: 8px;
+        }
+
+        .meal-time {
+            font-size: 11px;
+            color: #999;
+            margin-top: 8px;
+        }
+
+        /* Тижневий звіт */
+        .report-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 20px;
+            padding: 20px;
+            border-radius: 24px;
+            color: white;
+        }
+
+        .report-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 12px;
+            border-radius: 24px;
+            width: 100%;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+
+        /* Нагадування */
+        .reminder-section {
+            background: #fff3e0;
+            margin: 20px;
+            padding: 16px;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Модальне вікно */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            max-width: 90%;
+            width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        /* Порожній стан */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state span {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 16px;
+        }
+
+        /* Анімації */
+        @keyframes slideIn {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .meal-item {
+            animation: slideIn 0.3s ease;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
-        <header class="header">
+        <!-- Хедер -->
+        <div class="header">
             <div class="header-top">
-                <h1>🍽️ FoodTracker</h1>
-                <button class="settings-btn" onclick="openSettings()">⚙️</button>
+                <h1>🍽️ FoodTracker Pro</h1>
+                <div>
+                    <button class="notify-btn" onclick="openNotifications()">⏰</button>
+                    <button class="settings-btn" onclick="openSettings()">⚙️</button>
+                </div>
             </div>
-            <div class="date-info">
-                <span id="currentDate"></span>
-            </div>
-        </header>
-        
+            <div class="date-info" id="currentDate"></div>
+        </div>
+
+        <!-- Картка калорій -->
         <div class="calorie-card">
             <div class="calorie-header">
-                <span>📊 Денна норма</span>
-                <span id="calorieGoal">0</span>
+                <span>🎯 Денна ціль</span>
+                <span class="calorie-goal" id="calorieGoal">0</span>
+                <span>ккал</span>
             </div>
             <div class="progress-bar">
                 <div class="progress-fill" id="calorieProgress" style="width: 0%"></div>
@@ -34,92 +376,214 @@
                 <span>⚡ Залишилось: <strong id="remainingCalories">0</strong> ккал</span>
             </div>
         </div>
-        
+
+        <!-- Макронутрієнти -->
         <div class="macros-card">
-            <h3>🥗 Макронутрієнти</h3>
+            <h3>🥗 Денні макронутрієнти</h3>
             <div class="macro-item">
-                <span>🥩 Білки</span>
-                <div class="macro-bar-container">
-                    <div class="macro-bar protein-bar" id="proteinBar" style="width: 0%"></div>
+                <div class="macro-label">
+                    <span>🥩 Білки</span>
+                    <span id="proteinValue">0</span>
+                    <span>г / <span id="proteinGoal">0</span> г</span>
                 </div>
-                <span id="proteinValue">0</span><span>г</span>
+                <div class="macro-bar">
+                    <div class="macro-fill protein-fill" id="proteinBar" style="width: 0%"></div>
+                </div>
             </div>
             <div class="macro-item">
-                <span>🧈 Жири</span>
-                <div class="macro-bar-container">
-                    <div class="macro-bar fat-bar" id="fatBar" style="width: 0%"></div>
+                <div class="macro-label">
+                    <span>🧈 Жири</span>
+                    <span id="fatValue">0</span>
+                    <span>г / <span id="fatGoal">0</span> г</span>
                 </div>
-                <span id="fatValue">0</span><span>г</span>
+                <div class="macro-bar">
+                    <div class="macro-fill fat-fill" id="fatBar" style="width: 0%"></div>
+                </div>
             </div>
             <div class="macro-item">
-                <span>🍚 Вуглеводи</span>
-                <div class="macro-bar-container">
-                    <div class="macro-bar carbs-bar" id="carbsBar" style="width: 0%"></div>
+                <div class="macro-label">
+                    <span>🍚 Вуглеводи</span>
+                    <span id="carbsValue">0</span>
+                    <span>г / <span id="carbsGoal">0</span> г</span>
                 </div>
-                <span id="carbsValue">0</span><span>г</span>
+                <div class="macro-bar">
+                    <div class="macro-fill carbs-fill" id="carbsBar" style="width: 0%"></div>
+                </div>
             </div>
         </div>
-        
+
+        <!-- Кнопки дій -->
+        <div class="action-buttons">
+            <button class="action-btn add-meal-btn" onclick="addMeal()">
+                📸 + Додати прийом
+            </button>
+            <button class="action-btn add-water-btn" onclick="addWater()">
+                💧 + Вода
+            </button>
+        </div>
+
+        <!-- Список прийомів їжі -->
         <div class="meals-section">
             <div class="section-header">
-                <h3>📝 Прийоми їжі</h3>
-                <button class="add-meal-btn" onclick="addMeal()">+ Додати</button>
+                <h3>📝 Сьогоднішні прийоми</h3>
+                <span id="mealsCount">0</span>
             </div>
-            <div id="mealsList" class="meals-list">
+            <div id="mealsList">
                 <div class="empty-state">
-                    <span>📸</span>
+                    <span>🍽️</span>
                     <p>Ще немає прийомів їжі</p>
-                    <button onclick="addMeal()">Додати перший прийом</button>
+                    <button class="action-btn add-meal-btn" onclick="addMeal()" style="margin-top: 16px;">
+                        Додати перший прийом
+                    </button>
                 </div>
             </div>
         </div>
-        
-        <div class="actions-section">
+
+        <!-- Тижневий звіт -->
+        <div class="report-section">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 32px;">🤖</span>
+                <div>
+                    <strong>AI-аналіз тижня</strong>
+                    <div style="font-size: 12px; opacity: 0.9;">Gemini 2.5 Flash проаналізує ваше харчування</div>
+                </div>
+            </div>
             <button class="report-btn" onclick="getWeeklyReport()">
-                📊 Тижневий звіт
+                📊 Отримати розгорнутий звіт
+            </button>
+        </div>
+
+        <!-- Нагадування -->
+        <div class="reminder-section">
+            <div>
+                <span>⏰</span>
+                <strong>Нагадування</strong>
+                <div style="font-size: 12px; color: #666;">Отримуйте сповіщення про прийоми їжі</div>
+            </div>
+            <button onclick="openNotifications()" style="background: #ff9800; color: white; border: none; padding: 8px 16px; border-radius: 20px;">
+                Налаштувати
             </button>
         </div>
     </div>
-    
+
+    <!-- Модальне вікно налаштувань -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ Налаштування профілю</h3>
+                <button class="close-modal" onclick="closeSettings()">×</button>
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 8px;">Вік (років)</label>
+                <input type="number" id="age" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 16px;">
+                
+                <label style="display: block; margin-bottom: 8px;">Стать</label>
+                <select id="gender" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 16px;">
+                    <option value="male">Чоловік</option>
+                    <option value="female">Жінка</option>
+                </select>
+                
+                <label style="display: block; margin-bottom: 8px;">Зріст (см)</label>
+                <input type="number" id="height" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 16px;">
+                
+                <label style="display: block; margin-bottom: 8px;">Вага (кг)</label>
+                <input type="number" id="weight" step="0.1" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 16px;">
+                
+                <label style="display: block; margin-bottom: 8px;">Рівень активності</label>
+                <select id="activityLevel" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 16px;">
+                    <option value="sedentary">Сидячий (офісна робота)</option>
+                    <option value="light">Легкий (1-3 тренування/тиждень)</option>
+                    <option value="moderate">Помірний (3-5 тренувань/тиждень)</option>
+                    <option value="active">Високий (6-7 тренувань/тиждень)</option>
+                    <option value="very_active">Дуже високий (фізична робота)</option>
+                </select>
+                
+                <label style="display: block; margin-bottom: 8px;">Моя ціль</label>
+                <select id="goal" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 16px;">
+                    <option value="lose">🏃 Схуднення</option>
+                    <option value="maintain">⚖️ Підтримка ваги</option>
+                    <option value="gain">💪 Набір м'язової маси</option>
+                </select>
+                
+                <button onclick="saveProfile()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 24px; font-weight: 600;">
+                    💾 Зберегти налаштування
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const telegramId = new URLSearchParams(window.location.search).get('user_id');
-        
-        if (!telegramId) {
-            alert('Помилка авторизації');
-        }
-        
+        let currentData = {
+            meals: [],
+            user: null
+        };
+
+        // Поточна дата
+        document.getElementById('currentDate').innerText = new Date().toLocaleDateString('uk-UA', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
         // Завантаження даних
         async function loadData() {
             try {
                 // Завантажуємо профіль
                 const userRes = await fetch(`/api/user/${telegramId}`);
                 const userData = await userRes.json();
-                
                 if (!userData.error) {
-                    document.getElementById('calorieGoal').innerText = Math.round(userData.daily_calorie_goal) || 0;
+                    currentData.user = userData;
+                    document.getElementById('calorieGoal').innerText = Math.round(userData.daily_calorie_goal) || 2000;
+                    
+                    // Розраховуємо норми БЖУ
+                    const macros = calculateMacros(userData);
+                    document.getElementById('proteinGoal').innerText = macros.protein;
+                    document.getElementById('fatGoal').innerText = macros.fat;
+                    document.getElementById('carbsGoal').innerText = macros.carbs;
                 }
                 
-                // Завантажуємо прийоми за сьогодні
+                // Завантажуємо прийоми
                 const mealsRes = await fetch(`/api/meals/${telegramId}`);
                 const meals = await mealsRes.json();
-                
+                currentData.meals = meals;
                 renderMeals(meals);
-                calculateTotals(meals, userData);
+                calculateTotals(meals, currentData.user);
                 
             } catch (error) {
                 console.error('Error loading data:', error);
             }
         }
-        
+
+        function calculateMacros(user) {
+            const calories = user?.daily_calorie_goal || 2000;
+            const weight = user?.weight || 70;
+            const goal = user?.goal || 'maintain';
+            
+            let proteinPerKg = 1.8;
+            if (goal === 'gain') proteinPerKg = 2.0;
+            if (goal === 'lose') proteinPerKg = 2.2;
+            
+            const protein = Math.round(weight * proteinPerKg);
+            const fat = Math.round((calories * 0.28) / 9);
+            const carbs = Math.round((calories - (protein * 4) - (fat * 9)) / 4);
+            
+            return { protein, fat, carbs };
+        }
+
         function renderMeals(meals) {
             const container = document.getElementById('mealsList');
+            document.getElementById('mealsCount').innerText = meals.length;
             
             if (!meals || meals.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <span>📸</span>
+                        <span>🍽️</span>
                         <p>Ще немає прийомів їжі</p>
-                        <button onclick="addMeal()">Додати перший прийом</button>
+                        <button class="action-btn add-meal-btn" onclick="addMeal()" style="margin-top: 16px;">
+                            Додати перший прийом
+                        </button>
                     </div>
                 `;
                 return;
@@ -128,25 +592,22 @@
             container.innerHTML = meals.map(meal => `
                 <div class="meal-item">
                     <div class="meal-header">
-                        <strong>${meal.name}</strong>
+                        <span class="meal-name">${meal.name}</span>
                         <span class="meal-calories">${meal.calories} ккал</span>
                     </div>
                     <div class="meal-macros">
-                        <span>🥩 ${meal.protein}g</span>
-                        <span>🧈 ${meal.fat}g</span>
-                        <span>🍚 ${meal.carbs}g</span>
+                        <span>🥩 ${meal.protein}г</span>
+                        <span>🧈 ${meal.fat}г</span>
+                        <span>🍚 ${meal.carbs}г</span>
                     </div>
                     ${meal.feedback ? `<div class="meal-feedback">💡 ${meal.feedback}</div>` : ''}
                     <div class="meal-time">${new Date(meal.created_at).toLocaleTimeString('uk-UA')}</div>
                 </div>
             `).join('');
         }
-        
-        function calculateTotals(meals, userData) {
-            let totalCalories = 0;
-            let totalProtein = 0;
-            let totalFat = 0;
-            let totalCarbs = 0;
+
+        function calculateTotals(meals, user) {
+            let totalCalories = 0, totalProtein = 0, totalFat = 0, totalCarbs = 0;
             
             meals.forEach(meal => {
                 totalCalories += meal.calories || 0;
@@ -155,7 +616,7 @@
                 totalCarbs += meal.carbs || 0;
             });
             
-            const goal = userData.daily_calorie_goal || 2000;
+            const goal = user?.daily_calorie_goal || 2000;
             const remaining = Math.max(0, goal - totalCalories);
             const progress = (totalCalories / goal) * 100;
             
@@ -167,24 +628,69 @@
             document.getElementById('fatValue').innerText = totalFat;
             document.getElementById('carbsValue').innerText = totalCarbs;
             
-            // Розрахунок відсотків для макро (приблизно)
-            const proteinGoal = userData.weight ? userData.weight * 1.8 : 100;
-            const fatGoal = (goal * 0.28) / 9;
-            const carbsGoal = (goal - (proteinGoal * 4) - (fatGoal * 9)) / 4;
-            
-            document.getElementById('proteinBar').style.width = Math.min((totalProtein / proteinGoal) * 100, 100) + '%';
-            document.getElementById('fatBar').style.width = Math.min((totalFat / fatGoal) * 100, 100) + '%';
-            document.getElementById('carbsBar').style.width = Math.min((totalCarbs / carbsGoal) * 100, 100) + '%';
+            const macros = calculateMacros(user);
+            document.getElementById('proteinBar').style.width = Math.min((totalProtein / macros.protein) * 100, 100) + '%';
+            document.getElementById('fatBar').style.width = Math.min((totalFat / macros.fat) * 100, 100) + '%';
+            document.getElementById('carbsBar').style.width = Math.min((totalCarbs / macros.carbs) * 100, 100) + '%';
         }
-        
+
         function addMeal() {
             window.location.href = `/add-meal?user_id=${telegramId}`;
         }
-        
-        function openSettings() {
-            window.location.href = `/settings?user_id=${telegramId}`;
+
+        function addWater() {
+            alert('💧 Функція відстеження води скоро з\'явиться!');
         }
-        
+
+        function openSettings() {
+            document.getElementById('settingsModal').style.display = 'flex';
+            if (currentData.user) {
+                document.getElementById('age').value = currentData.user.age || '';
+                document.getElementById('gender').value = currentData.user.gender || 'male';
+                document.getElementById('height').value = currentData.user.height || '';
+                document.getElementById('weight').value = currentData.user.weight || '';
+                document.getElementById('activityLevel').value = currentData.user.activity_level || 'moderate';
+                document.getElementById('goal').value = currentData.user.goal || 'maintain';
+            }
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        async function saveProfile() {
+            const profile = {
+                age: parseInt(document.getElementById('age').value) || 0,
+                gender: document.getElementById('gender').value,
+                height: parseInt(document.getElementById('height').value) || 0,
+                weight: parseFloat(document.getElementById('weight').value) || 0,
+                activity_level: document.getElementById('activityLevel').value,
+                goal: document.getElementById('goal').value
+            };
+            
+            try {
+                const response = await fetch(`/api/user/${telegramId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(profile)
+                });
+                
+                if (response.ok) {
+                    alert('✅ Профіль збережено!');
+                    closeSettings();
+                    loadData();
+                } else {
+                    alert('❌ Помилка збереження');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+            }
+        }
+
+        function openNotifications() {
+            alert('⏰ Налаштування нагадувань:\n\nСкоро ви зможете налаштувати час сповіщень!');
+        }
+
         async function getWeeklyReport() {
             try {
                 const response = await fetch(`/api/weekly-report/${telegramId}`);
@@ -195,26 +701,18 @@
                     return;
                 }
                 
-                alert(data.ai_analysis || 'Звіт готовий! Перевірте повідомлення в боті.');
+                alert('📊 Тижневий звіт готовий! Перевірте повідомлення в боті.');
             } catch (error) {
                 console.error('Error getting report:', error);
                 alert('Помилка отримання звіту');
             }
         }
-        
-        // Встановлення поточної дати
-        document.getElementById('currentDate').innerText = new Date().toLocaleDateString('uk-UA', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-        
-        // Завантаження даних при старті
-        loadData();
-        
-        // Оновлення кожні 30 секунд
-        setInterval(loadData, 30000);
+
+        // Завантажуємо дані при старті
+        if (telegramId) {
+            loadData();
+            setInterval(loadData, 30000);
+        }
     </script>
 </body>
 </html>
