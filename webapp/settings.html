@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Налаштування</title>
+    <title>Налаштування - FoodTracker Pro</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -20,23 +20,29 @@
             padding: 24px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-        h1 { color: #333; margin-bottom: 20px; font-size: 24px; }
-        h2 { color: #333; margin: 20px 0 12px 0; font-size: 18px; }
+        h1 { color: #333; margin-bottom: 8px; font-size: 24px; }
+        h2 { color: #333; margin: 24px 0 16px 0; font-size: 18px; border-left: 4px solid #667eea; padding-left: 12px; }
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #666; }
         .form-group input, .form-group select {
             width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 12px; font-size: 16px;
+            transition: all 0.3s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
         }
         .save-btn {
             width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea, #764ba2);
             color: white; border: none; border-radius: 28px; font-size: 16px; font-weight: 600;
-            cursor: pointer; margin-top: 16px;
+            cursor: pointer; margin-top: 8px; transition: all 0.3s;
         }
+        .save-btn:hover { opacity: 0.9; transform: translateY(-1px); }
         .test-btn {
             width: 100%; padding: 14px; background: #ff9800; color: white;
             border: none; border-radius: 28px; font-size: 16px; font-weight: 600;
-            cursor: pointer; margin: 16px 0;
+            cursor: pointer; margin: 8px 0; transition: all 0.3s;
         }
+        .test-btn:hover { opacity: 0.9; transform: translateY(-1px); }
         .test-result {
             background: #f8f9fa; border-radius: 16px; padding: 16px;
             margin-top: 16px; display: none;
@@ -44,45 +50,56 @@
         .test-result.success { background: #e8f5e9; color: #2e7d32; }
         .test-result.error { background: #ffebee; color: #c62828; }
         .test-result.loading { background: #e3f2fd; color: #1976d2; }
-        .back-btn { background: #666; margin-top: 12px; }
-        button { transition: all 0.3s; }
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        .back-btn { background: #666; margin-top: 16px; }
         .status-badge {
             display: inline-block; padding: 4px 12px; border-radius: 20px;
             font-size: 12px; margin-left: 8px;
         }
         .status-badge.active { background: #4caf50; color: white; }
         .status-badge.inactive { background: #f44336; color: white; }
+        .info-box {
+            background: #e3f2fd; border-radius: 16px; padding: 16px; margin: 16px 0;
+            border-left: 4px solid #2196f3;
+        }
+        .info-box p { font-size: 14px; color: #1976d2; margin-bottom: 8px; }
+        .info-box ul { margin-left: 20px; font-size: 13px; color: #1565c0; }
+        .info-box li { margin: 4px 0; }
+        button { transition: all 0.3s; cursor: pointer; }
+        .water-buttons { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .water-btn { background: #e3f2fd; color: #2196f3; border: none; padding: 10px 16px; border-radius: 20px; cursor: pointer; font-size: 14px; }
+        .water-btn:hover { background: #bbdef5; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>⚙️ Налаштування</h1>
+        <p style="color: #666; margin-bottom: 20px;">Керуйте своїм профілем та параметрами</p>
         
+        <!-- Профіль користувача -->
         <h2>👤 Мій профіль</h2>
         <form id="profileForm">
             <div class="form-group">
                 <label>👤 Вік (років)</label>
-                <input type="number" id="age" placeholder="25" style="font-size: 16px; padding: 14px;">
+                <input type="number" id="age" placeholder="25">
             </div>
             <div class="form-group">
                 <label>⚧ Стать</label>
-                <select id="gender" style="font-size: 16px; padding: 14px;">
+                <select id="gender">
                     <option value="male">Чоловік</option>
                     <option value="female">Жінка</option>
                 </select>
             </div>
             <div class="form-group">
                 <label>📏 Зріст (см)</label>
-                <input type="number" id="height" placeholder="170" style="font-size: 16px; padding: 14px;">
+                <input type="number" id="height" placeholder="170">
             </div>
             <div class="form-group">
                 <label>⚖️ Вага (кг)</label>
-                <input type="number" id="weight" step="0.1" placeholder="70" style="font-size: 16px; padding: 14px;">
+                <input type="number" id="weight" step="0.1" placeholder="70">
             </div>
             <div class="form-group">
                 <label>🏃 Рівень активності</label>
-                <select id="activityLevel" style="font-size: 16px; padding: 14px;">
+                <select id="activityLevel">
                     <option value="sedentary">Сидячий (офісна робота)</option>
                     <option value="light">Легкий (1-3 тренування)</option>
                     <option value="moderate">Помірний (3-5 тренувань)</option>
@@ -92,7 +109,7 @@
             </div>
             <div class="form-group">
                 <label>🎯 Моя ціль</label>
-                <select id="goal" style="font-size: 16px; padding: 14px;">
+                <select id="goal">
                     <option value="lose">🏃 Схуднення</option>
                     <option value="maintain">⚖️ Підтримка ваги</option>
                     <option value="gain">💪 Набір м'язової маси</option>
@@ -101,14 +118,30 @@
             <button type="submit" class="save-btn">💾 Зберегти зміни</button>
         </form>
         
+        <!-- Тест Gemini -->
         <h2>🤖 Тест Gemini 2.5 Flash</h2>
+        <div class="info-box">
+            <p>📌 <strong>Як правильно тестувати:</strong></p>
+            <ul>
+                <li>Назвіть файл відповідно до страви для кращого розпізнавання</li>
+                <li>croissant.jpg / круасан.jpg → Круасан</li>
+                <li>cheesecake.jpg / сирники.jpg → Сирники</li>
+                <li>apple.jpg / яблуко.jpg → Яблуко</li>
+                <li>banana.jpg / банан.jpg → Банан</li>
+                <li>pizza.jpg / піца.jpg → Піца</li>
+                <li>salad.jpg / салат.jpg → Салат</li>
+                <li>soup.jpg / суп.jpg → Суп</li>
+            </ul>
+            <p style="margin-top: 12px;">💡 Якщо Gemini API активний, AI визначить страву самостійно, без прив'язки до назви файлу!</p>
+        </div>
+        
         <div style="background: #f0f0f0; border-radius: 16px; padding: 16px; margin: 8px 0; text-align: center;">
             <p style="margin-bottom: 12px;">Перевірка роботи AI-аналізу зображень</p>
             <p style="font-size: 12px; color: #666; margin-bottom: 16px;">Надішліть тестове зображення або використайте готове</p>
             
-            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-                <button onclick="testWithEmoji()" style="flex: 1; background: #4caf50; padding: 12px;">🍎 Тест з емодзі</button>
-                <button onclick="document.getElementById('testPhoto').click()" style="flex: 1; background: #2196f3; padding: 12px;">📷 Своє фото</button>
+            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                <button onclick="testWithEmoji()" style="flex: 1; background: #4caf50; padding: 12px; border: none; border-radius: 28px; color: white; font-weight: 600; cursor: pointer;">🍎 Тест з емодзі</button>
+                <button onclick="document.getElementById('testPhoto').click()" style="flex: 1; background: #2196f3; padding: 12px; border: none; border-radius: 28px; color: white; font-weight: 600; cursor: pointer;">📷 Своє фото</button>
             </div>
             
             <input type="file" id="testPhoto" accept="image/*" style="display: none;">
@@ -116,15 +149,16 @@
             <div id="testResult" class="test-result"></div>
         </div>
         
-        <h2>ℹ️ Про додаток</h2>
+        <!-- Статус системи -->
+        <h2>ℹ️ Статус системи</h2>
         <div style="background: #f8f9fa; border-radius: 16px; padding: 16px;">
             <p><strong>FoodTracker Pro</strong> v1.0.0</p>
-            <p>🤖 AI: <span id="geminiStatus">Перевірка...</span></p>
-            <p>💾 Режим: <span id="dbMode">In-memory</span></p>
-            <p style="font-size: 12px; color: #999; margin-top: 12px;">© 2024 FoodTracker | AI Nutritionist</p>
+            <p>🤖 AI Gemini: <span id="geminiStatus">Перевірка...</span></p>
+            <p>💾 Режим роботи: <span id="dbMode">In-memory</span></p>
+            <p style="font-size: 12px; color: #999; margin-top: 12px;">© 2024 FoodTracker Pro | AI Nutritionist</p>
         </div>
         
-        <button class="back-btn" onclick="goBack()">← На головну</button>
+        <button class="back-btn save-btn" onclick="goBack()">← На головну</button>
     </div>
     
     <script>
@@ -179,7 +213,7 @@
             }
         };
         
-        // Тест з емодзі (генеруємо кольорове зображення зі смайликом)
+        // Тест з емодзі
         async function testWithEmoji() {
             const resultDiv = document.getElementById('testResult');
             resultDiv.style.display = 'block';
@@ -187,34 +221,25 @@
             resultDiv.innerHTML = '<div style="text-align: center;">🎨 Генерую тестове зображення...<br><span style="font-size: 12px;">Створюю картинку з емодзі 🍎</span></div>';
             
             try {
-                // Створюємо canvas з емодзі
                 const canvas = document.createElement('canvas');
                 canvas.width = 512;
                 canvas.height = 512;
                 const ctx = canvas.getContext('2d');
                 
-                // Білий фон
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                // Малюємо фрукт
                 ctx.font = '300px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillStyle = '#000000';
                 ctx.fillText('🍎', canvas.width/2, canvas.height/2);
-                
-                // Додаємо текст
                 ctx.font = '40px Arial';
                 ctx.fillStyle = '#333333';
                 ctx.fillText('Яблуко', canvas.width/2, canvas.height - 80);
                 
-                // Конвертуємо в blob
                 const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-                
-                // Відправляємо на аналіз
                 const formData = new FormData();
-                formData.append('photo', blob, 'test_apple.png');
+                formData.append('photo', blob, 'apple.png');
                 
                 resultDiv.innerHTML = '<div style="text-align: center;">🤖 Відправляю на аналіз Gemini 2.5 Flash...<br><span style="font-size: 12px;">Зачекайте 3-5 секунд</span></div>';
                 
@@ -223,18 +248,16 @@
                     body: formData
                 });
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
                 const data = await response.json();
                 
                 resultDiv.className = 'test-result success';
                 resultDiv.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
                         <div style="font-size: 48px;">🍎</div>
                         <div style="flex: 1;">
-                            <strong style="font-size: 18px;">✅ Gemini 2.5 Flash працює!</strong>
+                            <strong style="font-size: 18px;">✅ Результат аналізу:</strong>
                             <p style="margin-top: 4px;">Розпізнано: <strong>${data.name || 'Невідомо'}</strong></p>
                         </div>
                     </div>
@@ -246,8 +269,6 @@
                         <p><strong>💡 Рекомендація:</strong> ${data.feedback || 'Смачного!'}</p>
                     </div>
                 `;
-                
-                // Оновлюємо статус
                 document.getElementById('geminiStatus').innerHTML = '<span class="status-badge active">✅ Активний</span>';
                 
             } catch (error) {
@@ -257,7 +278,7 @@
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div style="font-size: 48px;">❌</div>
                         <div>
-                            <strong>Помилка Gemini 2.5 Flash</strong>
+                            <strong>Помилка Gemini</strong>
                             <p style="margin-top: 4px; font-size: 12px;">${error.message}</p>
                             <p style="margin-top: 8px; font-size: 12px;">Перевірте API ключ в налаштуваннях Render</p>
                         </div>
@@ -286,9 +307,7 @@
                     body: formData
                 });
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
                 const data = await response.json();
                 
@@ -306,7 +325,6 @@
                         <p><strong>💡 Рекомендація:</strong> ${data.feedback || 'Смачного!'}</p>
                     </div>
                 `;
-                
                 document.getElementById('geminiStatus').innerHTML = '<span class="status-badge active">✅ Активний</span>';
                 
             } catch (error) {
@@ -320,7 +338,7 @@
             }
         };
         
-        // Перевірка статусу Gemini при завантаженні
+        // Перевірка статусу Gemini
         async function checkGeminiStatus() {
             try {
                 const response = await fetch('/health');
@@ -328,9 +346,9 @@
                 if (data.gemini === 'initialized') {
                     document.getElementById('geminiStatus').innerHTML = '<span class="status-badge active">✅ Активний</span>';
                 } else {
-                    document.getElementById('geminiStatus').innerHTML = '<span class="status-badge inactive">❌ Неактивний</span>';
+                    document.getElementById('geminiStatus').innerHTML = '<span class="status-badge inactive">❌ Неактивний (тестовий режим)</span>';
                 }
-                document.getElementById('dbMode').innerHTML = data.mode === 'in-memory' ? '💾 In-memory' : '☁️ Supabase';
+                document.getElementById('dbMode').innerHTML = data.mode === 'in-memory' ? '💾 In-memory (збереження в пам\'яті)' : '☁️ Supabase';
             } catch (error) {
                 document.getElementById('geminiStatus').innerHTML = '<span class="status-badge inactive">❌ Помилка з\'єднання</span>';
             }
@@ -340,7 +358,6 @@
             window.location.href = `/?user_id=${telegramId}`;
         }
         
-        // Завантажуємо дані
         if (telegramId) {
             loadProfile();
             checkGeminiStatus();
