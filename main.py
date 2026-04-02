@@ -1,5 +1,5 @@
 # ============================================
-# Файл: main.py (ФІНАЛЬНИЙ РОБОЧИЙ)
+# Файл: main.py (ФІНАЛЬНИЙ РОБОЧИЙ - ПАМ'ЯТЬ)
 # ============================================
 import os
 import logging
@@ -142,7 +142,7 @@ async def lifespan(app: FastAPI):
     """Управління життєвим циклом"""
     logger.info("🚀 Starting up...")
     
-    # Ініціалізація Supabase
+    # Ініціалізація (тепер без помилок)
     init_supabase()
     
     # Налаштування бота
@@ -444,10 +444,6 @@ async def get_user(telegram_id: int):
     try:
         logger.info(f"🔍 API: Getting user {telegram_id}")
         
-        if supabase is None:
-            logger.error("Database not initialized")
-            return JSONResponse({"error": "Database not initialized"}, status_code=500)
-        
         profile = get_user_profile(telegram_id)
         if profile:
             logger.info(f"✅ User {telegram_id} found")
@@ -466,10 +462,6 @@ async def update_user(telegram_id: int, profile: dict):
     try:
         logger.info(f"📝 API: Updating user {telegram_id}")
         logger.info(f"Received profile data: {profile}")
-        
-        if supabase is None:
-            logger.error("Database not initialized")
-            return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
         # Валідація та конвертація типів
         age = profile.get("age")
@@ -538,9 +530,6 @@ async def get_meals(telegram_id: int, date: Optional[str] = None):
     try:
         logger.info(f"🔍 API: Getting meals for {telegram_id}")
         
-        if supabase is None:
-            return JSONResponse({"error": "Database not initialized"}, status_code=500)
-        
         meals = get_today_meals(telegram_id)
         logger.info(f"Found {len(meals)} meals for {telegram_id}")
         return JSONResponse(meals)
@@ -579,9 +568,6 @@ async def create_meal(meal: dict):
         logger.info(f"📝 API: Saving meal for user {telegram_id}")
         logger.info(f"Meal data: {meal}")
         
-        if supabase is None:
-            return JSONResponse({"error": "Database not initialized"}, status_code=500)
-        
         meal_data = {
             "photo_url": meal.get("photo_url"),
             "name": meal.get("name"),
@@ -612,9 +598,6 @@ async def get_daily_summary(telegram_id: int):
     try:
         logger.info(f"📊 API: Getting daily summary for {telegram_id}")
         
-        if supabase is None:
-            return JSONResponse({"error": "Database not initialized"}, status_code=500)
-        
         meals = get_today_meals(telegram_id)
         user_profile = get_user_profile(telegram_id)
         
@@ -636,9 +619,6 @@ async def get_weekly_report(telegram_id: int):
     """Отримати тижневий звіт з AI-аналізом"""
     try:
         logger.info(f"📊 API: Getting weekly report for {telegram_id}")
-        
-        if supabase is None:
-            return JSONResponse({"error": "Database not initialized"}, status_code=500)
         
         meals = get_weekly_meals(telegram_id)
         
@@ -697,9 +677,6 @@ async def set_notifications(telegram_id: int, times: List[str]):
     try:
         logger.info(f"⏰ API: Setting notifications for {telegram_id}: {times}")
         
-        if supabase is None:
-            return JSONResponse({"error": "Database not initialized"}, status_code=500)
-        
         result = save_notifications(telegram_id, times)
         
         if result:
@@ -719,9 +696,6 @@ async def get_notifications_endpoint(telegram_id: int):
     try:
         logger.info(f"🔍 API: Getting notifications for {telegram_id}")
         
-        if supabase is None:
-            return JSONResponse({"error": "Database not initialized"}, status_code=500)
-        
         times = get_notifications(telegram_id)
         logger.info(f"Found {len(times)} notifications for {telegram_id}")
         
@@ -733,17 +707,20 @@ async def get_notifications_endpoint(telegram_id: int):
 
 @app.get("/test-db")
 async def test_db():
-    """Тест підключення до бази даних"""
+    """Тест стану бази даних"""
     try:
-        if supabase is None:
-            return JSONResponse({"error": "Supabase not initialized"}, status_code=500)
+        # Перевіряємо чи є збережені дані
+        users_count = len(_memory_db["users"]) if hasattr(_memory_db, "users") else 0
+        meals_count = sum(len(m) for m in _memory_db.get("meals", {}).values()) if hasattr(_memory_db, "meals") else 0
         
-        # Спробуємо виконати простий запит
-        result = supabase.table("users").select("*").limit(1).execute()
         return JSONResponse({
             "status": "connected",
-            "tables_exist": True,
-            "message": "Database is working!"
+            "mode": "in-memory",
+            "stats": {
+                "users": users_count,
+                "meals": meals_count
+            },
+            "message": "Database is working in memory mode"
         })
     except Exception as e:
         return JSONResponse({
@@ -761,7 +738,7 @@ async def health():
     return JSONResponse({
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "supabase": "connected" if supabase else "disconnected",
+        "mode": "in-memory",
         "gemini": "initialized" if gemini_service else "failed",
         "bot": "ready" if app_instance else "initializing"
     })
