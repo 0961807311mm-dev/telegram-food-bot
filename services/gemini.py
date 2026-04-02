@@ -19,15 +19,31 @@ class GeminiService:
         
         genai.configure(api_key=api_key)
         
-        # Використовуємо правильну модель
-        try:
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
-            # Тестуємо модель
-            test_response = self.model.generate_content("Test")
-            logger.info("✅ Gemini 1.5 Flash initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize Gemini: {e}")
-            raise
+        # Перевіряємо доступні моделі
+        self.model = None
+        models_to_try = [
+            'gemini-2.0-flash',
+            'gemini-1.5-flash',
+            'gemini-pro',
+            'gemini-1.5-pro'
+        ]
+        
+        for model_name in models_to_try:
+            try:
+                test_model = genai.GenerativeModel(model_name)
+                # Тестуємо
+                test_response = test_model.generate_content("Test")
+                if test_response:
+                    self.model = test_model
+                    logger.info(f"✅ Gemini model initialized: {model_name}")
+                    break
+            except Exception as e:
+                logger.warning(f"Model {model_name} not available: {e}")
+                continue
+        
+        if not self.model:
+            logger.error("No Gemini model available!")
+            raise ValueError("No Gemini model available")
     
     async def analyze_meal(self, photo_bytes: bytes, filename: str) -> Dict[str, Any]:
         """Аналіз фото їжі через Gemini"""
@@ -39,43 +55,42 @@ class GeminiService:
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # Стискаємо для швидкості
+            # Стискаємо
             max_size = 1024
             if image.size[0] > max_size or image.size[1] > max_size:
                 image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
             
-            # Промпт українською
-            prompt = """Проаналізуй фото їжі. Відповідай ТІЛЬКИ в форматі JSON (без додаткового тексту):
+            # Зберігаємо в байти
+            img_byte_arr = io.BytesIO()
+            image.save(img_byte_arr, format='JPEG', quality=85)
+            img_byte_arr = img_byte_arr.getvalue()
+            
+            # Промпт
+            prompt = """Analyze this food image. Return ONLY valid JSON (no markdown, no extra text):
 {
-    "name": "назва страви українською",
-    "calories": число (калорії),
-    "protein": число (білки в грамах),
-    "fat": число (жири в грамах),
-    "carbs": число (вуглеводи в грамах),
-    "feedback": "коротка рекомендація українською (1 речення)"
+    "name": "dish name in Ukrainian",
+    "calories": estimated calories (number),
+    "protein": protein in grams (number),
+    "fat": fat in grams (number),
+    "carbs": carbohydrates in grams (number),
+    "feedback": "short recommendation in Ukrainian (1 sentence)"
 }
 
-Якщо не впізнаєш страву, поверни:
-{
-    "name": "Невідомо",
-    "calories": 0,
-    "protein": 0,
-    "fat": 0,
-    "carbs": 0,
-    "feedback": "Не вдалося розпізнати страву. Спробуйте краще освітлення."
-}"""
+If unclear, return: {"name": "Невідомо", "calories": 0, "protein": 0, "fat": 0, "carbs": 0, "feedback": "Не вдалося розпізнати"}
+
+Be specific about the dish name."""
             
-            # Запит до Gemini
+            # Запит
             loop = asyncio.get_event_loop()
             response = await asyncio.wait_for(
-                loop.run_in_executor(None, lambda: self.model.generate_content([prompt, image])),
-                timeout=30.0
+                loop.run_in_executor(None, lambda: self.model.generate_content([prompt, img_byte_arr])),
+                timeout=25.0
             )
             
             text = response.text.strip()
-            logger.info(f"Gemini response: {text[:200]}")
+            logger.info(f"Gemini raw response: {text[:200]}")
             
-            # Очищаємо від markdown
+            # Очищаємо
             text = re.sub(r'^```json\s*', '', text)
             text = re.sub(r'^```\s*', '', text)
             text = re.sub(r'\s*```$', '', text)
@@ -98,59 +113,17 @@ class GeminiService:
             
         except asyncio.TimeoutError:
             logger.error("Gemini timeout")
-            return {
-                "name": "Помилка",
-                "calories": 0,
-                "protein": 0,
-                "fat": 0,
-                "carbs": 0,
-                "feedback": "⏰ Час очікування вичерпано. Спробуйте ще раз."
-            }
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON parse error: {e}")
-            return {
-                "name": "Помилка",
-                "calories": 0,
-                "protein": 0,
-                "fat": 0,
-                "carbs": 0,
-                "feedback": "❌ Помилка аналізу. Спробуйте ще раз."
-            }
+            return {"name": "Помилка", "calories": 0, "protein": 0, "fat": 0, "carbs": 0, "feedback": "⏰ Час очікування вичерпано"}
         except Exception as e:
             logger.error(f"Gemini API error: {e}")
-            return {
-                "name": "Помилка",
-                "calories": 0,
-                "protein": 0,
-                "fat": 0,
-                "carbs": 0,
-                "feedback": f"❌ Помилка: {str(e)[:50]}"
-            }
+            return {"name": "Помилка", "calories": 0, "protein": 0, "fat": 0, "carbs": 0, "feedback": f"❌ Помилка: {str(e)[:50]}"}
     
     async def analyze_weekly(self, meals: List[Dict], averages: Dict, user_profile: Dict) -> str:
         """Аналіз тижневого харчування"""
         try:
-            prompt = f"""Проаналізуй харчування за тиждень.
-            
-Середні показники за день:
-- Калорії: {averages.get('calories', 0):.0f} ккал
-- Білки: {averages.get('protein', 0):.1f} г
-- Жири: {averages.get('fat', 0):.1f} г
-- Вуглеводи: {averages.get('carbs', 0):.1f} г"""
-
-            if user_profile:
-                prompt += f"""
-                
-Дані користувача:
-- Вік: {user_profile.get('age')}
-- Стать: {user_profile.get('gender')}
-- Вага: {user_profile.get('weight')} кг
-- Ціль: {user_profile.get('goal')}
-- Норма калорій: {user_profile.get('daily_calorie_goal')} ккал"""
-
-            prompt += """
-            
-Напиши короткий аналіз українською (3-5 речень) з рекомендаціями. Використовуй емодзі."""
+            prompt = f"""Analyze weekly nutrition (in Ukrainian):
+Daily averages: {averages.get('calories', 0):.0f} kcal, protein {averages.get('protein', 0):.1f}g, fat {averages.get('fat', 0):.1f}g, carbs {averages.get('carbs', 0):.1f}g.
+Give short analysis with recommendations (3-5 sentences)."""
             
             loop = asyncio.get_event_loop()
             response = await asyncio.wait_for(
@@ -160,4 +133,4 @@ class GeminiService:
             return response.text
         except Exception as e:
             logger.error(f"Weekly analysis error: {e}")
-            return "📊 Не вдалося згенерувати аналіз. Спробуйте пізніше."
+            return "📊 Не вдалося згенерувати аналіз."
