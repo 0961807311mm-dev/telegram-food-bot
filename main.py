@@ -1,5 +1,5 @@
 # ============================================
-# Файл: main.py (ПОВНИЙ ФІНАЛЬНИЙ)
+# Файл: main.py (ПОВНИЙ З ВОДОЮ)
 # ============================================
 import os
 import logging
@@ -22,6 +22,7 @@ WEBAPP_URL = os.getenv("WEBAPP_URL", "https://telegram-food-bot-jedx.onrender.co
 
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram.constants import ParseMode
 from bot.handlers import setup_handlers
 
 # Імпорт сервісів
@@ -108,11 +109,18 @@ def get_supplements(telegram_id: int):
     return _memory_db["supplements"].get(telegram_id, [])
 
 def save_water(telegram_id: int, amount: int):
-    """Зберегти кількість води в пам'яті"""
+    """Зберегти кількість води в пам'яті (перезапис)"""
+    _memory_db["water"][telegram_id] = amount
+    logger.info(f"✅ Water saved in memory for {telegram_id}: {amount} ml")
+    return amount
+
+def add_water(telegram_id: int, amount: int):
+    """Додати кількість води до існуючої"""
     current = _memory_db["water"].get(telegram_id, 0)
-    _memory_db["water"][telegram_id] = current + amount
-    logger.info(f"✅ Water saved in memory for {telegram_id}: {_memory_db['water'][telegram_id]} ml")
-    return _memory_db["water"][telegram_id]
+    new_total = current + amount
+    _memory_db["water"][telegram_id] = new_total
+    logger.info(f"✅ Water added for {telegram_id}: +{amount} ml, total: {new_total} ml")
+    return new_total
 
 def get_water(telegram_id: int):
     """Отримати кількість води з пам'яті"""
@@ -256,6 +264,7 @@ async def settings_page():
 # API ENDPOINTS
 # ============================================
 
+# ========== КОРИСТУВАЧІ ==========
 @app.get("/api/user/{telegram_id}")
 async def get_user(telegram_id: int):
     """Отримати дані користувача"""
@@ -312,6 +321,7 @@ async def update_user(telegram_id: int, profile: dict):
         logger.error(f"Error updating user: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
+# ========== ПРИЙОМИ ЇЖІ ==========
 @app.get("/api/meals/{telegram_id}")
 async def get_meals(telegram_id: int):
     """Отримати прийоми їжі"""
@@ -320,20 +330,6 @@ async def get_meals(telegram_id: int):
         return JSONResponse(meals)
     except Exception as e:
         logger.error(f"Error getting meals: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-@app.post("/api/analyze")
-async def analyze_meal(photo: UploadFile = File(...)):
-    """Аналіз фото їжі через Gemini"""
-    try:
-        if not gemini_service:
-            return JSONResponse({"error": "Gemini service not initialized"}, status_code=500)
-        
-        photo_bytes = await photo.read()
-        analysis = await gemini_service.analyze_meal(photo_bytes, photo.filename)
-        return JSONResponse(analysis)
-    except Exception as e:
-        logger.error(f"Analysis error: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/api/meals")
@@ -368,6 +364,47 @@ async def create_meal(meal: dict):
         logger.error(f"❌ Error creating meal: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
+# ========== ВОДА ==========
+@app.get("/api/water/{telegram_id}")
+async def get_water_endpoint(telegram_id: int):
+    """Отримати кількість води"""
+    try:
+        total = get_water(telegram_id)
+        logger.info(f"💧 Water for {telegram_id}: {total} ml")
+        return JSONResponse({"total": total})
+    except Exception as e:
+        logger.error(f"Error getting water: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/water/{telegram_id}")
+async def save_water_endpoint(telegram_id: int, data: dict):
+    """Зберегти кількість води (перезапис)"""
+    try:
+        total = data.get("total", 0)
+        if isinstance(total, str):
+            total = int(total)
+        result = save_water(telegram_id, total)
+        logger.info(f"💧 Water saved for {telegram_id}: {result} ml")
+        return JSONResponse({"total": result})
+    except Exception as e:
+        logger.error(f"Error saving water: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/water/add/{telegram_id}")
+async def add_water_endpoint(telegram_id: int, data: dict):
+    """Додати кількість води до існуючої"""
+    try:
+        amount = data.get("amount", 0)
+        if isinstance(amount, str):
+            amount = int(amount)
+        new_total = add_water(telegram_id, amount)
+        logger.info(f"💧 Water added for {telegram_id}: +{amount} ml, total: {new_total} ml")
+        return JSONResponse({"total": new_total, "added": amount})
+    except Exception as e:
+        logger.error(f"Error adding water: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+# ========== ВІТАМІНИ/ДОБАВКИ ==========
 @app.get("/api/supplements/{telegram_id}")
 async def get_supplements_endpoint(telegram_id: int):
     """Отримати вітаміни/добавки"""
@@ -393,27 +430,7 @@ async def create_supplement(supplement: dict):
         logger.error(f"Error saving supplement: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
-@app.get("/api/water/{telegram_id}")
-async def get_water_endpoint(telegram_id: int):
-    """Отримати кількість води"""
-    try:
-        total = get_water(telegram_id)
-        return JSONResponse({"total": total})
-    except Exception as e:
-        logger.error(f"Error getting water: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-@app.post("/api/water/{telegram_id}")
-async def save_water_endpoint(telegram_id: int, data: dict):
-    """Зберегти кількість води"""
-    try:
-        amount = data.get("amount", 0)
-        total = save_water(telegram_id, amount)
-        return JSONResponse({"total": total})
-    except Exception as e:
-        logger.error(f"Error saving water: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
-
+# ========== НАГАДУВАННЯ ==========
 @app.get("/api/notifications/{telegram_id}")
 async def get_notifications_endpoint(telegram_id: int):
     """Отримати налаштування нагадувань"""
@@ -435,6 +452,22 @@ async def set_notifications_endpoint(telegram_id: int, data: dict):
         logger.error(f"Error setting notifications: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
+# ========== АНАЛІЗ GEMINI ==========
+@app.post("/api/analyze")
+async def analyze_meal(photo: UploadFile = File(...)):
+    """Аналіз фото їжі через Gemini"""
+    try:
+        if not gemini_service:
+            return JSONResponse({"error": "Gemini service not initialized"}, status_code=500)
+        
+        photo_bytes = await photo.read()
+        analysis = await gemini_service.analyze_meal(photo_bytes, photo.filename)
+        return JSONResponse(analysis)
+    except Exception as e:
+        logger.error(f"Analysis error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+# ========== СТАТИСТИКА ==========
 @app.get("/api/daily-summary/{telegram_id}")
 async def get_daily_summary(telegram_id: int):
     """Отримати денну статистику"""
@@ -500,6 +533,7 @@ async def get_weekly_report(telegram_id: int):
         logger.error(f"Error getting weekly report: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
+# ========== ТЕСТИ ==========
 @app.get("/test-db")
 async def test_db():
     """Тест стану бази даних"""
