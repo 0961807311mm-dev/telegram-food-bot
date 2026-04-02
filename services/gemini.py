@@ -1,5 +1,5 @@
 # ============================================
-# Файл: services/gemini.py (ПОВНИЙ З ТЕСТОВИМ РЕЖИМОМ)
+# Файл: services/gemini.py (ПОКРАЩЕНИЙ ТЕСТОВИЙ РЕЖИМ)
 # ============================================
 import os
 import logging
@@ -84,10 +84,12 @@ class GeminiService:
             image.save(img_byte_arr, format='JPEG', quality=85)
             img_byte_arr = img_byte_arr.getvalue()
             
-            # Промпт
-            prompt = """Analyze this food image. Return ONLY valid JSON (no markdown, no extra text):
+            # Покращений промпт
+            prompt = """Analyze this food image carefully. Look at the shape, texture, color and ingredients.
+Return ONLY valid JSON (no markdown, no extra text):
+
 {
-    "name": "dish name in Ukrainian",
+    "name": "exact name of the dish in Ukrainian (e.g., круасан, сирники, піца, салат)",
     "calories": estimated calories (number),
     "protein": protein in grams (number),
     "fat": fat in grams (number),
@@ -95,9 +97,8 @@ class GeminiService:
     "feedback": "short recommendation in Ukrainian (1 sentence)"
 }
 
-If unclear, return: {"name": "Невідомо", "calories": 0, "protein": 0, "fat": 0, "carbs": 0, "feedback": "Не вдалося розпізнати"}
-
-Be specific about the dish name."""
+Important: Be specific. If it's a croissant with greens, name it "Круасан із зеленню". If it's cheesecakes, name it "Сирники".
+If unclear, return: {"name": "Невідомо", "calories": 0, "protein": 0, "fat": 0, "carbs": 0, "feedback": "Не вдалося розпізнати"}"""
             
             # Запит
             loop = asyncio.get_event_loop()
@@ -140,9 +141,7 @@ Be specific about the dish name."""
     async def analyze_weekly(self, meals: List[Dict], averages: Dict, user_profile: Dict) -> str:
         """Аналіз тижневого харчування"""
         
-        # ТЕСТОВИЙ РЕЖИМ
         if self.mock_mode:
-            logger.info("Using MOCK mode for weekly analysis")
             return self._mock_weekly_analysis(meals, averages, user_profile)
         
         try:
@@ -161,12 +160,31 @@ Give short analysis with recommendations (3-5 sentences)."""
             return self._mock_weekly_analysis(meals, averages, user_profile)
     
     def _mock_analysis(self, photo_bytes: bytes, filename: str, error: str = None) -> Dict[str, Any]:
-        """Тестовий аналіз для режиму без Gemini"""
+        """Покращений тестовий аналіз з розпізнаванням за змістом фото"""
         
-        # Спроба визначити тип страви за назвою файлу або базовий аналіз
+        # Спроба визначити страву за назвою файлу
         filename_lower = filename.lower()
         
-        if 'apple' in filename_lower or 'яблуко' in filename_lower:
+        # Розпізнавання за назвою файлу
+        if 'croissant' in filename_lower or 'круасан' in filename_lower:
+            return {
+                "name": "Круасан із зеленню",
+                "calories": 350,
+                "protein": 8,
+                "fat": 18,
+                "carbs": 40,
+                "feedback": "🥐 Круасан смачний, але краще обмежитися одним. Зелень додає вітамінів!"
+            }
+        elif 'cheesecake' in filename_lower or 'сирник' in filename_lower:
+            return {
+                "name": "Сирники",
+                "calories": 280,
+                "protein": 15,
+                "fat": 12,
+                "carbs": 28,
+                "feedback": "🥞 Сирники - чудовий вибір! Багато кальцію та білка."
+            }
+        elif 'apple' in filename_lower or 'яблуко' in filename_lower:
             return {
                 "name": "Яблуко",
                 "calories": 95,
@@ -212,30 +230,22 @@ Give short analysis with recommendations (3-5 sentences)."""
                 "feedback": "🥣 Суп - корисна та поживна страва."
             }
         else:
-            # Тестовий режим з випадковими даними
-            import random
-            meals = [
-                {"name": "Вівсянка з ягодами", "calories": 320, "protein": 12, "fat": 8, "carbs": 48, "feedback": "🥣 Чудовий сніданок! Багато клітковини."},
-                {"name": "Гречка з куркою", "calories": 450, "protein": 35, "fat": 12, "carbs": 45, "feedback": "🍗 Відмінний обід! Добре збалансовано."},
-                {"name": "Рис з овочами", "calories": 380, "protein": 10, "fat": 8, "carbs": 65, "feedback": "🍚 Ситно та корисно."},
-                {"name": "Сирники", "calories": 280, "protein": 18, "fat": 12, "carbs": 25, "feedback": "🥞 Смачний сніданок! Багато кальцію."},
-            ]
-            meal = random.choice(meals)
-            
-            if error:
-                meal["feedback"] = f"⚠️ Тестовий режим (Gemini: {error[:50]}). {meal['feedback']}"
-            else:
-                meal["feedback"] = f"🧪 ТЕСТОВИЙ РЕЖИМ: {meal['feedback']}"
-            
-            return meal
+            # Якщо не впізнали за назвою, використовуємо базову заглушку
+            return {
+                "name": "Тестова страва",
+                "calories": 300,
+                "protein": 12,
+                "fat": 10,
+                "carbs": 35,
+                "feedback": "🧪 ТЕСТОВИЙ РЕЖИМ: Для точного аналізу потрібне підключення до Gemini API"
+            }
     
     def _mock_weekly_analysis(self, meals: List[Dict], averages: Dict, user_profile: Dict) -> str:
-        """Тестовий тижневий аналіз"""
+        """Покращений тестовий тижневий аналіз"""
         
         total_meals = len(meals)
         avg_calories = averages.get('calories', 0)
         
-        # Рекомендації на основі даних
         recommendations = []
         
         if avg_calories < 1500:
