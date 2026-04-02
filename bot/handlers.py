@@ -1,10 +1,10 @@
 # ============================================
-# Файл: bot/handlers.py (ПОВНИЙ)
+# Файл: bot/handlers.py (ВИПРАВЛЕНИЙ)
 # ============================================
 import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import ContextTypes
+from telegram.ext import CommandHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     logger.info(f"📨 Start command from user {user.id}")
     
-    # Статичне меню з кнопками
     keyboard = [
         [
             InlineKeyboardButton(
@@ -44,13 +43,13 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Вітаю, {user.first_name}! 👋
 
-Це твій персональний AI-нутриціолог на базі *Gemini 2.5 Flash*.
+Це твій персональний AI-нутриціолог.
 
-*📊 ДАШБОРД* - перегляд статистики та прогресу
-*📸 ДОДАТИ СТРАВУ* - аналіз фото через AI
+*📊 ДАШБОРД* - перегляд статистики
+*📸 ДОДАТИ СТРАВУ* - аналіз фото
 *⚙️ НАЛАШТУВАННЯ* - профіль та параметри
 
-Натискай на кнопки нижче, щоб почати! 🚀
+Натискай на кнопки нижче! 🚀
 """
     
     await update.message.reply_text(
@@ -94,12 +93,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /help - Ця довідка
 
 *Як користуватися:*
-1️⃣ Налаштуй свій профіль (вік, вага, зріст)
-2️⃣ Додавай прийоми їжі через камеру
-3️⃣ Стеж за прогресом у дашборді
-4️⃣ Отримуй AI-рекомендації
-
-*Підтримка:* @your_support
+1️⃣ Налаштуй свій профіль
+2️⃣ Додавай прийоми їжі
+3️⃣ Стеж за прогресом
 """
     
     await update.message.reply_text(
@@ -111,7 +107,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обробка будь-якого тексту - показує головне меню"""
     user = update.effective_user
-    logger.info(f"📨 Message from user {user.id}: {update.message.text}")
     
     keyboard = [
         [
