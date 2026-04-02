@@ -1,5 +1,5 @@
 # ============================================
-# Файл: main.py (ФІНАЛЬНИЙ ПОВНИЙ)
+# Файл: main.py (ПОВНИЙ ФІНАЛЬНИЙ)
 # ============================================
 import os
 import logging
@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://telegram-food-bot-jedx.onrender.com")
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import Application, CommandHandler, ContextTypes
-from telegram.constants import ParseMode
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from bot.handlers import setup_handlers
 
 # Імпорт сервісів
 from services.gemini import GeminiService
@@ -129,93 +129,6 @@ def get_notifications(telegram_id: int):
     return _memory_db["notifications"].get(telegram_id, [])
 
 # ============================================
-# TELEGRAM БОТ
-# ============================================
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Відповідає на команду /start"""
-    user = update.effective_user
-    logger.info(f"📨 Start command from user {user.id}")
-    
-    profile = get_user_profile(user.id)
-    
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                text="📊 Відкрити дашборд",
-                web_app=WebAppInfo(url=f"{WEBAPP_URL}/?user_id={user.id}")
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="📸 Додати прийом їжі",
-                web_app=WebAppInfo(url=f"{WEBAPP_URL}/add-meal?user_id={user.id}")
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                text="⚙️ Налаштування",
-                web_app=WebAppInfo(url=f"{WEBAPP_URL}/settings?user_id={user.id}")
-            )
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    if not profile:
-        welcome_text = f"""
-🍽️ *Вітаю, {user.first_name}!*
-
-Я твій персональний AI-нутриціолог на базі *Gemini 2.5 Flash*.
-
-*Щоб почати, налаштуй свій профіль:*
-1️⃣ Натисни кнопку "Налаштування"
-2️⃣ Введи свої параметри (вік, вага, зріст)
-3️⃣ Обери ціль (схуднення/підтримка/набір)
-
-Після налаштувань я розрахую твою норму калорій!
-"""
-    else:
-        daily_goal = profile.get("daily_calorie_goal", 2000)
-        welcome_text = f"""
-🍽️ *Вітаю, {user.first_name}!*
-
-Твоя денна норма: *{int(daily_goal)} ккал*
-
-*Що я вмію:*
-📸 Аналізувати фото їжі через AI
-📊 Вести щоденник калорій
-📈 Розраховувати норми БЖУ
-💡 Давати персоналізовані рекомендації
-⏰ Нагадувати про прийоми їжі
-🤖 Аналізувати харчування за тиждень
-
-*Почни з додавання першого прийому їжі!*
-"""
-    
-    await update.message.reply_text(
-        welcome_text,
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=reply_markup
-    )
-    logger.info(f"✅ Reply sent to user {user.id}")
-
-async def setup_bot():
-    """Налаштовує бота"""
-    global app_instance
-    
-    if app_instance is None:
-        logger.info("Creating bot application...")
-        app_instance = Application.builder().token(BOT_TOKEN).build()
-        app_instance.add_handler(CommandHandler("start", start))
-        await app_instance.initialize()
-        
-        webhook_url = f"{WEBAPP_URL}/webhook"
-        await app_instance.bot.set_webhook(webhook_url)
-        logger.info(f"✅ Bot setup complete. Webhook: {webhook_url}")
-    
-    return app_instance
-
-# ============================================
 # FASTAPI ДОДАТОК
 # ============================================
 
@@ -224,9 +137,23 @@ async def lifespan(app: FastAPI):
     """Управління життєвим циклом"""
     logger.info("🚀 Starting up...")
     init_supabase()
-    await setup_bot()
+    
+    # Налаштування бота
+    global app_instance
+    if app_instance is None:
+        logger.info("Creating bot application...")
+        app_instance = Application.builder().token(BOT_TOKEN).build()
+        setup_handlers(app_instance)
+        await app_instance.initialize()
+        
+        webhook_url = f"{WEBAPP_URL}/webhook"
+        await app_instance.bot.set_webhook(webhook_url)
+        logger.info(f"✅ Bot setup complete. Webhook: {webhook_url}")
+    
     logger.info("✅ Startup complete")
+    
     yield
+    
     logger.info("🛑 Shutting down...")
     if app_instance:
         await app_instance.bot.delete_webhook()
@@ -247,9 +174,12 @@ async def webhook(request: Request):
     try:
         data = await request.json()
         logger.info(f"📨 Webhook received: {data.get('message', {}).get('text', 'no text')}")
-        bot_app = await setup_bot()
-        update = Update.de_json(data, bot_app.bot)
-        await bot_app.process_update(update)
+        
+        if app_instance is None:
+            return JSONResponse({"status": "error", "message": "Bot not initialized"}, status_code=500)
+        
+        update = Update.de_json(data, app_instance.bot)
+        await app_instance.process_update(update)
         return JSONResponse({"status": "ok"})
     except Exception as e:
         logger.error(f"❌ Webhook error: {e}", exc_info=True)
@@ -412,7 +342,6 @@ async def create_meal(meal: dict):
     try:
         telegram_id = meal.get("telegram_id")
         logger.info(f"📝 API: Saving meal for user {telegram_id}")
-        logger.info(f"Meal data: {meal}")
         
         if not telegram_id:
             return JSONResponse({"error": "telegram_id required"}, status_code=400)
@@ -433,7 +362,6 @@ async def create_meal(meal: dict):
             logger.info(f"✅ Meal saved for user {telegram_id}")
             return JSONResponse(result)
         else:
-            logger.error(f"❌ Failed to save meal for {telegram_id}")
             return JSONResponse({"error": "Failed to save meal"}, status_code=500)
             
     except Exception as e:
