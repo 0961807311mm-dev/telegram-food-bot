@@ -1,5 +1,5 @@
 # ============================================
-# Файл: main.py (ПОВНИЙ ФІНАЛЬНИЙ З ВСІМА ФУНКЦІЯМИ)
+# Файл: main.py (ФІНАЛЬНИЙ ПОВНИЙ)
 # ============================================
 import os
 import logging
@@ -73,7 +73,6 @@ def save_meal(telegram_id: int, meal_data: dict):
     """Зберегти прийом в пам'яті"""
     if telegram_id not in _memory_db["meals"]:
         _memory_db["meals"][telegram_id] = []
-    meal_data["id"] = len(_memory_db["meals"][telegram_id]) + 1
     _memory_db["meals"][telegram_id].append(meal_data)
     logger.info(f"✅ Meal saved in memory for {telegram_id}")
     return meal_data
@@ -272,7 +271,7 @@ async def index():
         <!DOCTYPE html>
         <html>
         <head><title>FoodTracker</title></head>
-        <body><h1>FoodTracker</h1><p>Відкрийте Telegram та надішліть /start</p></body>
+        <body><h1>🍽️ FoodTracker</h1><p>Відкрийте Telegram та надішліть /start</p></body>
         </html>
         """)
 
@@ -319,7 +318,7 @@ async def settings_page():
         <!DOCTYPE html>
         <html>
         <head><title>Налаштування</title></head>
-        <body><h1>Налаштування</h1><p>Будь ласка, оновіть додаток</p></body>
+        <body><h1>⚙️ Налаштування</h1><p>Будь ласка, оновіть додаток</p></body>
         </html>
         """)
 
@@ -412,19 +411,33 @@ async def create_meal(meal: dict):
     """Зберегти прийом їжі"""
     try:
         telegram_id = meal.get("telegram_id")
+        logger.info(f"📝 API: Saving meal for user {telegram_id}")
+        logger.info(f"Meal data: {meal}")
+        
+        if not telegram_id:
+            return JSONResponse({"error": "telegram_id required"}, status_code=400)
+        
         meal_data = {
-            "name": meal.get("name"),
-            "calories": meal.get("calories"),
-            "protein": meal.get("protein"),
-            "fat": meal.get("fat"),
-            "carbs": meal.get("carbs"),
-            "feedback": meal.get("feedback"),
+            "name": meal.get("name", "Невідомо"),
+            "calories": meal.get("calories", 0),
+            "protein": meal.get("protein", 0),
+            "fat": meal.get("fat", 0),
+            "carbs": meal.get("carbs", 0),
+            "feedback": meal.get("feedback", ""),
             "created_at": datetime.utcnow().isoformat()
         }
+        
         result = save_meal(telegram_id, meal_data)
-        return JSONResponse(result or {})
+        
+        if result:
+            logger.info(f"✅ Meal saved for user {telegram_id}")
+            return JSONResponse(result)
+        else:
+            logger.error(f"❌ Failed to save meal for {telegram_id}")
+            return JSONResponse({"error": "Failed to save meal"}, status_code=500)
+            
     except Exception as e:
-        logger.error(f"Error creating meal: {e}")
+        logger.error(f"❌ Error creating meal: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/supplements/{telegram_id}")
