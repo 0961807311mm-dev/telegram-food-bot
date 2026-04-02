@@ -17,13 +17,12 @@
             min-height: 100vh;
         }
 
-        /* Головний контейнер */
+        /* Головний контейнер - на весь екран */
         .app-container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
+            width: 100%;
             min-height: 100vh;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            background: white;
+            padding-bottom: 80px;
         }
 
         /* Хедер */
@@ -48,7 +47,7 @@
             font-weight: 600;
         }
 
-        .settings-btn, .notify-btn {
+        .exit-btn {
             background: rgba(255,255,255,0.2);
             border: none;
             color: white;
@@ -57,7 +56,6 @@
             border-radius: 20px;
             font-size: 20px;
             cursor: pointer;
-            transition: all 0.3s;
         }
 
         .date-info {
@@ -72,15 +70,12 @@
             padding: 24px;
             border-radius: 24px;
             color: white;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
 
         .calorie-header {
             display: flex;
             justify-content: space-between;
             margin-bottom: 16px;
-            font-size: 14px;
-            opacity: 0.9;
         }
 
         .calorie-goal {
@@ -101,7 +96,6 @@
             height: 100%;
             width: 0%;
             transition: width 0.5s ease;
-            border-radius: 6px;
         }
 
         .calorie-stats {
@@ -112,16 +106,10 @@
 
         /* Картка макронутрієнтів */
         .macros-card {
-            background: white;
+            background: #f8f9fa;
             margin: 20px;
             padding: 20px;
             border-radius: 24px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-
-        .macros-card h3 {
-            margin-bottom: 16px;
-            color: #333;
         }
 
         .macro-item {
@@ -133,7 +121,6 @@
             justify-content: space-between;
             margin-bottom: 8px;
             font-size: 14px;
-            color: #666;
         }
 
         .macro-bar {
@@ -168,15 +155,16 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
         }
 
         .add-meal-btn {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
+        }
+
+        .add-supplement-btn {
+            background: #e8f5e9;
+            color: #4caf50;
         }
 
         .add-water-btn {
@@ -185,7 +173,7 @@
         }
 
         /* Секція прийомів їжі */
-        .meals-section {
+        .meals-section, .supplements-section {
             margin: 20px;
         }
 
@@ -201,12 +189,11 @@
             color: #333;
         }
 
-        .meal-item {
+        .meal-item, .supplement-item {
             background: #f8f9fa;
             padding: 16px;
             border-radius: 16px;
             margin-bottom: 12px;
-            transition: all 0.3s;
         }
 
         .meal-header {
@@ -230,7 +217,6 @@
             gap: 16px;
             font-size: 12px;
             color: #666;
-            margin-bottom: 8px;
         }
 
         .meal-feedback {
@@ -240,44 +226,6 @@
             font-size: 12px;
             color: #2e7d32;
             margin-top: 8px;
-        }
-
-        .meal-time {
-            font-size: 11px;
-            color: #999;
-            margin-top: 8px;
-        }
-
-        /* Тижневий звіт */
-        .report-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            margin: 20px;
-            padding: 20px;
-            border-radius: 24px;
-            color: white;
-        }
-
-        .report-btn {
-            background: white;
-            color: #667eea;
-            border: none;
-            padding: 12px;
-            border-radius: 24px;
-            width: 100%;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 12px;
-        }
-
-        /* Нагадування */
-        .reminder-section {
-            background: #fff3e0;
-            margin: 20px;
-            padding: 16px;
-            border-radius: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
         /* Модальне вікно */
@@ -317,33 +265,56 @@
             cursor: pointer;
         }
 
-        /* Порожній стан */
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-
-        .empty-state span {
-            font-size: 48px;
-            display: block;
+        .form-group {
             margin-bottom: 16px;
         }
 
-        /* Анімації */
-        @keyframes slideIn {
-            from {
-                transform: translateY(20px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
         }
 
-        .meal-item {
-            animation: slideIn 0.3s ease;
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            font-size: 16px;
+        }
+
+        .save-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 28px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+        }
+
+        /* Сповіщення */
+        .notification-bell {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ff4757;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
@@ -353,9 +324,12 @@
         <div class="header">
             <div class="header-top">
                 <h1>🍽️ FoodTracker Pro</h1>
-                <div>
-                    <button class="notify-btn" onclick="openNotifications()">⏰</button>
-                    <button class="settings-btn" onclick="openSettings()">⚙️</button>
+                <div style="display: flex; gap: 12px;">
+                    <button class="notification-bell" onclick="openNotifications()">
+                        🔔
+                        <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
+                    </button>
+                    <button class="exit-btn" onclick="closeApp()">✕</button>
                 </div>
             </div>
             <div class="date-info" id="currentDate"></div>
@@ -379,7 +353,7 @@
 
         <!-- Макронутрієнти -->
         <div class="macros-card">
-            <h3>🥗 Денні макронутрієнти</h3>
+            <h3 style="margin-bottom: 16px;">🥗 Денні макронутрієнти</h3>
             <div class="macro-item">
                 <div class="macro-label">
                     <span>🥩 Білки</span>
@@ -415,54 +389,45 @@
         <!-- Кнопки дій -->
         <div class="action-buttons">
             <button class="action-btn add-meal-btn" onclick="addMeal()">
-                📸 + Додати прийом
+                📸 + Їжа
+            </button>
+            <button class="action-btn add-supplement-btn" onclick="addSupplement()">
+                💊 + Вітаміни
             </button>
             <button class="action-btn add-water-btn" onclick="addWater()">
                 💧 + Вода
+            </button>
+            <button class="action-btn" style="background: #fff3e0; color: #ff9800;" onclick="openSettings()">
+                ⚙️ Налаштування
             </button>
         </div>
 
         <!-- Список прийомів їжі -->
         <div class="meals-section">
             <div class="section-header">
-                <h3>📝 Сьогоднішні прийоми</h3>
+                <h3>🍽️ Сьогоднішні прийоми</h3>
                 <span id="mealsCount">0</span>
             </div>
             <div id="mealsList">
-                <div class="empty-state">
+                <div class="empty-state" style="text-align: center; padding: 40px; color: #999;">
                     <span>🍽️</span>
                     <p>Ще немає прийомів їжі</p>
-                    <button class="action-btn add-meal-btn" onclick="addMeal()" style="margin-top: 16px;">
-                        Додати перший прийом
-                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Тижневий звіт -->
-        <div class="report-section">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="font-size: 32px;">🤖</span>
-                <div>
-                    <strong>AI-аналіз тижня</strong>
-                    <div style="font-size: 12px; opacity: 0.9;">Gemini 2.5 Flash проаналізує ваше харчування</div>
+        <!-- Список вітамінів/добавок -->
+        <div class="supplements-section">
+            <div class="section-header">
+                <h3>💊 Вітаміни та добавки</h3>
+                <span id="supplementsCount">0</span>
+            </div>
+            <div id="supplementsList">
+                <div class="empty-state" style="text-align: center; padding: 40px; color: #999;">
+                    <span>💊</span>
+                    <p>Ще немає добавок</p>
                 </div>
             </div>
-            <button class="report-btn" onclick="getWeeklyReport()">
-                📊 Отримати розгорнутий звіт
-            </button>
-        </div>
-
-        <!-- Нагадування -->
-        <div class="reminder-section">
-            <div>
-                <span>⏰</span>
-                <strong>Нагадування</strong>
-                <div style="font-size: 12px; color: #666;">Отримуйте сповіщення про прийоми їжі</div>
-            </div>
-            <button onclick="openNotifications()" style="background: #ff9800; color: white; border: none; padding: 8px 16px; border-radius: 20px;">
-                Налаштувати
-            </button>
         </div>
     </div>
 
@@ -474,41 +439,63 @@
                 <button class="close-modal" onclick="closeSettings()">×</button>
             </div>
             <div>
-                <label style="display: block; margin-bottom: 8px;">Вік (років)</label>
-                <input type="number" id="age" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 16px;">
-                
-                <label style="display: block; margin-bottom: 8px;">Стать</label>
-                <select id="gender" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 16px;">
-                    <option value="male">Чоловік</option>
-                    <option value="female">Жінка</option>
-                </select>
-                
-                <label style="display: block; margin-bottom: 8px;">Зріст (см)</label>
-                <input type="number" id="height" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 16px;">
-                
-                <label style="display: block; margin-bottom: 8px;">Вага (кг)</label>
-                <input type="number" id="weight" step="0.1" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 16px;">
-                
-                <label style="display: block; margin-bottom: 8px;">Рівень активності</label>
-                <select id="activityLevel" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 16px;">
-                    <option value="sedentary">Сидячий (офісна робота)</option>
-                    <option value="light">Легкий (1-3 тренування/тиждень)</option>
-                    <option value="moderate">Помірний (3-5 тренувань/тиждень)</option>
-                    <option value="active">Високий (6-7 тренувань/тиждень)</option>
-                    <option value="very_active">Дуже високий (фізична робота)</option>
-                </select>
-                
-                <label style="display: block; margin-bottom: 8px;">Моя ціль</label>
-                <select id="goal" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 16px;">
-                    <option value="lose">🏃 Схуднення</option>
-                    <option value="maintain">⚖️ Підтримка ваги</option>
-                    <option value="gain">💪 Набір м'язової маси</option>
-                </select>
-                
-                <button onclick="saveProfile()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 24px; font-weight: 600;">
-                    💾 Зберегти налаштування
-                </button>
+                <div class="form-group">
+                    <label>👤 Вік (років)</label>
+                    <input type="number" id="age" placeholder="25" style="font-size: 16px; padding: 14px;">
+                </div>
+                <div class="form-group">
+                    <label>⚧ Стать</label>
+                    <select id="gender" style="font-size: 16px; padding: 14px;">
+                        <option value="male">Чоловік</option>
+                        <option value="female">Жінка</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>📏 Зріст (см)</label>
+                    <input type="number" id="height" placeholder="170" style="font-size: 16px; padding: 14px;">
+                </div>
+                <div class="form-group">
+                    <label>⚖️ Вага (кг)</label>
+                    <input type="number" id="weight" step="0.1" placeholder="70" style="font-size: 16px; padding: 14px;">
+                </div>
+                <div class="form-group">
+                    <label>🏃 Рівень активності</label>
+                    <select id="activityLevel" style="font-size: 16px; padding: 14px;">
+                        <option value="sedentary">Сидячий (офісна робота)</option>
+                        <option value="light">Легкий (1-3 тренування)</option>
+                        <option value="moderate">Помірний (3-5 тренувань)</option>
+                        <option value="active">Високий (6-7 тренувань)</option>
+                        <option value="very_active">Дуже високий (фізична робота)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>🎯 Моя ціль</label>
+                    <select id="goal" style="font-size: 16px; padding: 14px;">
+                        <option value="lose">🏃 Схуднення</option>
+                        <option value="maintain">⚖️ Підтримка ваги</option>
+                        <option value="gain">💪 Набір м'язової маси</option>
+                    </select>
+                </div>
+                <button class="save-btn" onclick="saveProfile()">💾 Зберегти зміни</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно нагадувань -->
+    <div id="notificationsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⏰ Нагадування</h3>
+                <button class="close-modal" onclick="closeNotifications()">×</button>
+            </div>
+            <div id="notificationsList">
+                <div class="notification-item" style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <input type="time" id="notifTime1" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #ddd;">
+                    <button onclick="document.getElementById('notifTime1').parentElement.remove()" style="background: #ff4757; color: white; border: none; padding: 12px; border-radius: 12px;">🗑️</button>
+                </div>
+            </div>
+            <button class="save-btn" onclick="addNotificationRow()" style="background: #667eea; margin-bottom: 12px;">+ Додати час</button>
+            <button class="save-btn" onclick="saveNotifications()">💾 Зберегти нагадування</button>
         </div>
     </div>
 
@@ -516,7 +503,10 @@
         const telegramId = new URLSearchParams(window.location.search).get('user_id');
         let currentData = {
             meals: [],
-            user: null
+            supplements: [],
+            water: 0,
+            user: null,
+            notifications: []
         };
 
         // Поточна дата
@@ -527,7 +517,96 @@
             day: 'numeric'
         });
 
-        // Завантаження даних
+        // Вихід з додатку
+        function closeApp() {
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.close();
+            } else {
+                window.location.href = 'https://t.me/Aifood2_bot';
+            }
+        }
+
+        // Додавання прийому їжі
+        function addMeal() {
+            window.location.href = `/add-meal?user_id=${telegramId}`;
+        }
+
+        // Додавання вітамінів/добавок
+        function addSupplement() {
+            const supplementName = prompt("💊 Введіть назву вітаміну або добавки:", "Лляна олія");
+            if (supplementName) {
+                const supplement = {
+                    name: supplementName,
+                    created_at: new Date().toISOString()
+                };
+                
+                currentData.supplements.push(supplement);
+                localStorage.setItem(`supplements_${telegramId}`, JSON.stringify(currentData.supplements));
+                renderSupplements();
+                updateNotificationBadge();
+                alert(`✅ ${supplementName} додано!`);
+            }
+        }
+
+        // Додавання води
+        let waterAmount = 0;
+        function addWater() {
+            const amount = prompt("💧 Скільки води випили? (мл)", "250");
+            if (amount) {
+                waterAmount += parseInt(amount);
+                localStorage.setItem(`water_${telegramId}`, waterAmount);
+                document.getElementById('waterAmount').innerText = waterAmount;
+                alert(`✅ Додано ${amount} мл води. Всього: ${waterAmount} мл`);
+                updateNotificationBadge();
+            }
+        }
+
+        // Вітаміни та добавки
+        function renderSupplements() {
+            const container = document.getElementById('supplementsList');
+            document.getElementById('supplementsCount').innerText = currentData.supplements.length;
+            
+            if (currentData.supplements.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;"><span>💊</span><p>Ще немає добавок</p></div>';
+                return;
+            }
+            
+            container.innerHTML = currentData.supplements.map(sup => `
+                <div class="supplement-item">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600;">💊 ${sup.name}</span>
+                        <span style="font-size: 12px; color: #999;">${new Date(sup.created_at).toLocaleTimeString('uk-UA')}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Завантаження даних з пам'яті
+        function loadFromLocalStorage() {
+            const savedMeals = localStorage.getItem(`meals_${telegramId}`);
+            if (savedMeals) {
+                currentData.meals = JSON.parse(savedMeals);
+                renderMeals();
+            }
+            
+            const savedSupplements = localStorage.getItem(`supplements_${telegramId}`);
+            if (savedSupplements) {
+                currentData.supplements = JSON.parse(savedSupplements);
+                renderSupplements();
+            }
+            
+            const savedWater = localStorage.getItem(`water_${telegramId}`);
+            if (savedWater) {
+                waterAmount = parseInt(savedWater);
+            }
+            
+            const savedNotifications = localStorage.getItem(`notifications_${telegramId}`);
+            if (savedNotifications) {
+                currentData.notifications = JSON.parse(savedNotifications);
+            }
+        }
+
+        // Отримання даних з сервера
         async function loadData() {
             try {
                 // Завантажуємо профіль
@@ -537,22 +616,29 @@
                     currentData.user = userData;
                     document.getElementById('calorieGoal').innerText = Math.round(userData.daily_calorie_goal) || 2000;
                     
-                    // Розраховуємо норми БЖУ
                     const macros = calculateMacros(userData);
                     document.getElementById('proteinGoal').innerText = macros.protein;
                     document.getElementById('fatGoal').innerText = macros.fat;
                     document.getElementById('carbsGoal').innerText = macros.carbs;
                 }
                 
-                // Завантажуємо прийоми
+                // Завантажуємо прийоми з сервера
                 const mealsRes = await fetch(`/api/meals/${telegramId}`);
                 const meals = await mealsRes.json();
-                currentData.meals = meals;
-                renderMeals(meals);
-                calculateTotals(meals, currentData.user);
+                if (!meals.error) {
+                    currentData.meals = meals;
+                    localStorage.setItem(`meals_${telegramId}`, JSON.stringify(meals));
+                    renderMeals();
+                    calculateTotals(meals, currentData.user);
+                } else {
+                    loadFromLocalStorage();
+                    calculateTotals(currentData.meals, currentData.user);
+                }
                 
             } catch (error) {
                 console.error('Error loading data:', error);
+                loadFromLocalStorage();
+                calculateTotals(currentData.meals, currentData.user);
             }
         }
 
@@ -572,36 +658,28 @@
             return { protein, fat, carbs };
         }
 
-        function renderMeals(meals) {
+        function renderMeals() {
             const container = document.getElementById('mealsList');
-            document.getElementById('mealsCount').innerText = meals.length;
+            document.getElementById('mealsCount').innerText = currentData.meals.length;
             
-            if (!meals || meals.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <span>🍽️</span>
-                        <p>Ще немає прийомів їжі</p>
-                        <button class="action-btn add-meal-btn" onclick="addMeal()" style="margin-top: 16px;">
-                            Додати перший прийом
-                        </button>
-                    </div>
-                `;
+            if (currentData.meals.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;"><span>🍽️</span><p>Ще немає прийомів їжі</p></div>';
                 return;
             }
             
-            container.innerHTML = meals.map(meal => `
+            container.innerHTML = currentData.meals.map(meal => `
                 <div class="meal-item">
                     <div class="meal-header">
                         <span class="meal-name">${meal.name}</span>
                         <span class="meal-calories">${meal.calories} ккал</span>
                     </div>
                     <div class="meal-macros">
-                        <span>🥩 ${meal.protein}г</span>
-                        <span>🧈 ${meal.fat}г</span>
-                        <span>🍚 ${meal.carbs}г</span>
+                        <span>🥩 ${meal.protein || 0}г</span>
+                        <span>🧈 ${meal.fat || 0}г</span>
+                        <span>🍚 ${meal.carbs || 0}г</span>
                     </div>
                     ${meal.feedback ? `<div class="meal-feedback">💡 ${meal.feedback}</div>` : ''}
-                    <div class="meal-time">${new Date(meal.created_at).toLocaleTimeString('uk-UA')}</div>
+                    <div style="font-size: 11px; color: #999; margin-top: 8px;">${new Date(meal.created_at).toLocaleTimeString('uk-UA')}</div>
                 </div>
             `).join('');
         }
@@ -634,14 +712,7 @@
             document.getElementById('carbsBar').style.width = Math.min((totalCarbs / macros.carbs) * 100, 100) + '%';
         }
 
-        function addMeal() {
-            window.location.href = `/add-meal?user_id=${telegramId}`;
-        }
-
-        function addWater() {
-            alert('💧 Функція відстеження води скоро з\'явиться!');
-        }
-
+        // Налаштування
         function openSettings() {
             document.getElementById('settingsModal').style.display = 'flex';
             if (currentData.user) {
@@ -684,34 +755,96 @@
                 }
             } catch (error) {
                 console.error('Save error:', error);
+                alert('❌ Помилка збереження');
             }
         }
 
+        // Нагадування
         function openNotifications() {
-            alert('⏰ Налаштування нагадувань:\n\nСкоро ви зможете налаштувати час сповіщень!');
+            document.getElementById('notificationsModal').style.display = 'flex';
+            loadNotificationsUI();
         }
 
-        async function getWeeklyReport() {
-            try {
-                const response = await fetch(`/api/weekly-report/${telegramId}`);
-                const data = await response.json();
-                
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
-                
-                alert('📊 Тижневий звіт готовий! Перевірте повідомлення в боті.');
-            } catch (error) {
-                console.error('Error getting report:', error);
-                alert('Помилка отримання звіту');
+        function closeNotifications() {
+            document.getElementById('notificationsModal').style.display = 'none';
+        }
+
+        function addNotificationRow() {
+            const container = document.getElementById('notificationsList');
+            const row = document.createElement('div');
+            row.className = 'notification-item';
+            row.style.display = 'flex';
+            row.style.gap = '8px';
+            row.style.marginBottom = '12px';
+            row.innerHTML = `
+                <input type="time" class="notif-time" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #ddd;">
+                <button onclick="this.parentElement.remove()" style="background: #ff4757; color: white; border: none; padding: 12px; border-radius: 12px;">🗑️</button>
+            `;
+            container.appendChild(row);
+        }
+
+        function loadNotificationsUI() {
+            const container = document.getElementById('notificationsList');
+            container.innerHTML = '';
+            if (currentData.notifications.length === 0) {
+                addNotificationRow();
+            } else {
+                currentData.notifications.forEach(time => {
+                    const row = document.createElement('div');
+                    row.className = 'notification-item';
+                    row.style.display = 'flex';
+                    row.style.gap = '8px';
+                    row.style.marginBottom = '12px';
+                    row.innerHTML = `
+                        <input type="time" class="notif-time" value="${time}" style="flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #ddd;">
+                        <button onclick="this.parentElement.remove()" style="background: #ff4757; color: white; border: none; padding: 12px; border-radius: 12px;">🗑️</button>
+                    `;
+                    container.appendChild(row);
+                });
             }
         }
 
-        // Завантажуємо дані при старті
+        async function saveNotifications() {
+            const times = [];
+            document.querySelectorAll('.notif-time').forEach(input => {
+                if (input.value) {
+                    times.push(input.value);
+                }
+            });
+            
+            currentData.notifications = times;
+            localStorage.setItem(`notifications_${telegramId}`, JSON.stringify(times));
+            
+            try {
+                await fetch(`/api/notifications/${telegramId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(times)
+                });
+            } catch (error) {
+                console.error('Error saving notifications:', error);
+            }
+            
+            alert('✅ Нагадування збережено!');
+            closeNotifications();
+            updateNotificationBadge();
+        }
+
+        function updateNotificationBadge() {
+            const badge = document.getElementById('notificationBadge');
+            if (currentData.notifications && currentData.notifications.length > 0) {
+                badge.style.display = 'flex';
+                badge.innerText = currentData.notifications.length;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        // Запуск
         if (telegramId) {
             loadData();
             setInterval(loadData, 30000);
+            updateNotificationBadge();
         }
     </script>
 </body>
