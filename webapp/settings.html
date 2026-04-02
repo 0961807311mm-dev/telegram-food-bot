@@ -1,101 +1,141 @@
-<!-- ============================================ -->
-<!-- Файл: webapp/settings.html -->
-<!-- ============================================ -->
 <!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Налаштування</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #333; margin-bottom: 20px; font-size: 24px; }
+        h2 { color: #333; margin: 20px 0 12px 0; font-size: 18px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #666; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 12px; font-size: 16px;
+        }
+        .save-btn {
+            width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; border: none; border-radius: 28px; font-size: 16px; font-weight: 600;
+            cursor: pointer; margin-top: 16px;
+        }
+        .test-btn {
+            width: 100%; padding: 14px; background: #ff9800; color: white;
+            border: none; border-radius: 28px; font-size: 16px; font-weight: 600;
+            cursor: pointer; margin: 16px 0;
+        }
+        .test-result {
+            background: #f8f9fa; border-radius: 16px; padding: 16px;
+            margin-top: 16px; display: none;
+        }
+        .test-result.success { background: #e8f5e9; color: #2e7d32; }
+        .test-result.error { background: #ffebee; color: #c62828; }
+        .test-result.loading { background: #e3f2fd; color: #1976d2; }
+        .back-btn { background: #666; margin-top: 12px; }
+        button { transition: all 0.3s; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        .status-badge {
+            display: inline-block; padding: 4px 12px; border-radius: 20px;
+            font-size: 12px; margin-left: 8px;
+        }
+        .status-badge.active { background: #4caf50; color: white; }
+        .status-badge.inactive { background: #f44336; color: white; }
+    </style>
 </head>
 <body>
-    <div class="app-container">
-        <header class="header">
-            <button class="back-btn" onclick="goBack()">← Назад</button>
-            <h1>⚙️ Налаштування</h1>
-            <div style="width: 40px;"></div>
-        </header>
+    <div class="container">
+        <h1>⚙️ Налаштування</h1>
         
-        <div class="settings-section">
-            <h3>👤 Мої параметри</h3>
-            
+        <h2>👤 Мій профіль</h2>
+        <form id="profileForm">
             <div class="form-group">
-                <label>Вік (років)</label>
-                <input type="number" id="age" placeholder="25">
+                <label>👤 Вік (років)</label>
+                <input type="number" id="age" placeholder="25" style="font-size: 16px; padding: 14px;">
             </div>
-            
             <div class="form-group">
-                <label>Стать</label>
-                <select id="gender">
+                <label>⚧ Стать</label>
+                <select id="gender" style="font-size: 16px; padding: 14px;">
                     <option value="male">Чоловік</option>
                     <option value="female">Жінка</option>
                 </select>
             </div>
-            
             <div class="form-group">
-                <label>Зріст (см)</label>
-                <input type="number" id="height" placeholder="170">
+                <label>📏 Зріст (см)</label>
+                <input type="number" id="height" placeholder="170" style="font-size: 16px; padding: 14px;">
             </div>
-            
             <div class="form-group">
-                <label>Вага (кг)</label>
-                <input type="number" id="weight" step="0.1" placeholder="70">
+                <label>⚖️ Вага (кг)</label>
+                <input type="number" id="weight" step="0.1" placeholder="70" style="font-size: 16px; padding: 14px;">
             </div>
-            
             <div class="form-group">
-                <label>Рівень активності</label>
-                <select id="activityLevel">
+                <label>🏃 Рівень активності</label>
+                <select id="activityLevel" style="font-size: 16px; padding: 14px;">
                     <option value="sedentary">Сидячий (офісна робота)</option>
-                    <option value="light">Легкий (1-3 тренування/тиждень)</option>
-                    <option value="moderate">Помірний (3-5 тренувань/тиждень)</option>
-                    <option value="active">Високий (6-7 тренувань/тиждень)</option>
+                    <option value="light">Легкий (1-3 тренування)</option>
+                    <option value="moderate">Помірний (3-5 тренувань)</option>
+                    <option value="active">Високий (6-7 тренувань)</option>
                     <option value="very_active">Дуже високий (фізична робота)</option>
                 </select>
             </div>
-            
             <div class="form-group">
-                <label>Моя ціль</label>
-                <select id="goal">
-                    <option value="lose">🏃 Схуднення (дефіцит калорій)</option>
+                <label>🎯 Моя ціль</label>
+                <select id="goal" style="font-size: 16px; padding: 14px;">
+                    <option value="lose">🏃 Схуднення</option>
                     <option value="maintain">⚖️ Підтримка ваги</option>
-                    <option value="gain">💪 Набір м'язової маси (профіцит)</option>
+                    <option value="gain">💪 Набір м'язової маси</option>
                 </select>
             </div>
+            <button type="submit" class="save-btn">💾 Зберегти зміни</button>
+        </form>
+        
+        <h2>🤖 Тест Gemini 2.5 Flash</h2>
+        <div style="background: #f0f0f0; border-radius: 16px; padding: 16px; margin: 8px 0; text-align: center;">
+            <p style="margin-bottom: 12px;">Перевірка роботи AI-аналізу зображень</p>
+            <p style="font-size: 12px; color: #666; margin-bottom: 16px;">Надішліть тестове зображення або використайте готове</p>
             
-            <button class="save-btn" onclick="saveProfile()">💾 Зберегти зміни</button>
+            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                <button onclick="testWithEmoji()" style="flex: 1; background: #4caf50; padding: 12px;">🍎 Тест з емодзі</button>
+                <button onclick="document.getElementById('testPhoto').click()" style="flex: 1; background: #2196f3; padding: 12px;">📷 Своє фото</button>
+            </div>
+            
+            <input type="file" id="testPhoto" accept="image/*" style="display: none;">
+            
+            <div id="testResult" class="test-result"></div>
         </div>
         
-        <div class="settings-section">
-            <h3>⏰ Нагадування</h3>
-            <div id="notificationsList">
-                <div class="notification-item">
-                    <input type="time" id="notifTime1" value="09:00">
-                    <button onclick="addNotification()">+ Додати час</button>
-                </div>
-            </div>
-            <button class="save-btn" onclick="saveNotifications()">💾 Зберегти нагадування</button>
+        <h2>ℹ️ Про додаток</h2>
+        <div style="background: #f8f9fa; border-radius: 16px; padding: 16px;">
+            <p><strong>FoodTracker Pro</strong> v1.0.0</p>
+            <p>🤖 AI: <span id="geminiStatus">Перевірка...</span></p>
+            <p>💾 Режим: <span id="dbMode">In-memory</span></p>
+            <p style="font-size: 12px; color: #999; margin-top: 12px;">© 2024 FoodTracker | AI Nutritionist</p>
         </div>
         
-        <div class="settings-section">
-            <h3>ℹ️ Про додаток</h3>
-            <div class="info-text">
-                <p><strong>FoodTracker v1.0</strong></p>
-                <p>AI-нутриціолог на основі Gemini 2.0 Flash</p>
-                <p>Допомагає відстежувати харчування та досягати фітнес-цілей</p>
-                <button class="reset-btn" onclick="resetData()">🗑️ Скинути всі дані</button>
-            </div>
-        </div>
+        <button class="back-btn" onclick="goBack()">← На головну</button>
     </div>
     
     <script>
         const telegramId = new URLSearchParams(window.location.search).get('user_id');
         
+        // Завантаження профілю
         async function loadProfile() {
+            if (!telegramId) return;
             try {
                 const response = await fetch(`/api/user/${telegramId}`);
                 const data = await response.json();
-                
                 if (!data.error) {
                     document.getElementById('age').value = data.age || '';
                     document.getElementById('gender').value = data.gender || 'male';
@@ -109,7 +149,9 @@
             }
         }
         
-        async function saveProfile() {
+        // Збереження профілю
+        document.getElementById('profileForm').onsubmit = async (e) => {
+            e.preventDefault();
             const profile = {
                 age: parseInt(document.getElementById('age').value) || 0,
                 gender: document.getElementById('gender').value,
@@ -122,14 +164,12 @@
             try {
                 const response = await fetch(`/api/user/${telegramId}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(profile)
                 });
                 
                 if (response.ok) {
-                    alert('✅ Профіль успішно збережено!');
+                    alert('✅ Профіль збережено!');
                 } else {
                     alert('❌ Помилка збереження');
                 }
@@ -137,71 +177,162 @@
                 console.error('Save error:', error);
                 alert('❌ Помилка збереження');
             }
-        }
+        };
         
-        async function loadNotifications() {
-            try {
-                const response = await fetch(`/api/notifications/${telegramId}`);
-                const data = await response.json();
-                
-                if (data.times && data.times.length > 0) {
-                    const container = document.getElementById('notificationsList');
-                    container.innerHTML = '';
-                    data.times.forEach((time, index) => {
-                        addNotificationRow(time, index);
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading notifications:', error);
-            }
-        }
-        
-        function addNotificationRow(time = '', index = null) {
-            const container = document.getElementById('notificationsList');
-            const row = document.createElement('div');
-            row.className = 'notification-item';
-            row.innerHTML = `
-                <input type="time" value="${time}" class="notif-time">
-                <button onclick="this.parentElement.remove()">🗑️</button>
-            `;
-            container.appendChild(row);
-        }
-        
-        function addNotification() {
-            addNotificationRow('12:00');
-        }
-        
-        async function saveNotifications() {
-            const times = [];
-            document.querySelectorAll('.notif-time').forEach(input => {
-                if (input.value) {
-                    times.push(input.value);
-                }
-            });
+        // Тест з емодзі (генеруємо кольорове зображення зі смайликом)
+        async function testWithEmoji() {
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'test-result loading';
+            resultDiv.innerHTML = '<div style="text-align: center;">🎨 Генерую тестове зображення...<br><span style="font-size: 12px;">Створюю картинку з емодзі 🍎</span></div>';
             
             try {
-                const response = await fetch(`/api/notifications/${telegramId}`, {
+                // Створюємо canvas з емодзі
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                
+                // Білий фон
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Малюємо фрукт
+                ctx.font = '300px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#000000';
+                ctx.fillText('🍎', canvas.width/2, canvas.height/2);
+                
+                // Додаємо текст
+                ctx.font = '40px Arial';
+                ctx.fillStyle = '#333333';
+                ctx.fillText('Яблуко', canvas.width/2, canvas.height - 80);
+                
+                // Конвертуємо в blob
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                
+                // Відправляємо на аналіз
+                const formData = new FormData();
+                formData.append('photo', blob, 'test_apple.png');
+                
+                resultDiv.innerHTML = '<div style="text-align: center;">🤖 Відправляю на аналіз Gemini 2.5 Flash...<br><span style="font-size: 12px;">Зачекайте 3-5 секунд</span></div>';
+                
+                const response = await fetch('/api/analyze', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(times)
+                    body: formData
                 });
                 
-                if (response.ok) {
-                    alert('✅ Нагадування збережено!');
-                } else {
-                    alert('❌ Помилка збереження');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
                 }
+                
+                const data = await response.json();
+                
+                resultDiv.className = 'test-result success';
+                resultDiv.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                        <div style="font-size: 48px;">🍎</div>
+                        <div style="flex: 1;">
+                            <strong style="font-size: 18px;">✅ Gemini 2.5 Flash працює!</strong>
+                            <p style="margin-top: 4px;">Розпізнано: <strong>${data.name || 'Невідомо'}</strong></p>
+                        </div>
+                    </div>
+                    <div style="background: white; border-radius: 12px; padding: 12px; margin-top: 8px;">
+                        <p><strong>🔥 Калорії:</strong> ${data.calories || 0} ккал</p>
+                        <p><strong>🥩 Білки:</strong> ${data.protein || 0} г</p>
+                        <p><strong>🧈 Жири:</strong> ${data.fat || 0} г</p>
+                        <p><strong>🍚 Вуглеводи:</strong> ${data.carbs || 0} г</p>
+                        <p><strong>💡 Рекомендація:</strong> ${data.feedback || 'Смачного!'}</p>
+                    </div>
+                `;
+                
+                // Оновлюємо статус
+                document.getElementById('geminiStatus').innerHTML = '<span class="status-badge active">✅ Активний</span>';
+                
             } catch (error) {
-                console.error('Save error:', error);
-                alert('❌ Помилка збереження');
+                console.error('Test error:', error);
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="font-size: 48px;">❌</div>
+                        <div>
+                            <strong>Помилка Gemini 2.5 Flash</strong>
+                            <p style="margin-top: 4px; font-size: 12px;">${error.message}</p>
+                            <p style="margin-top: 8px; font-size: 12px;">Перевірте API ключ в налаштуваннях Render</p>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('geminiStatus').innerHTML = '<span class="status-badge inactive">❌ Неактивний</span>';
             }
         }
         
-        async function resetData() {
-            if (confirm('⚠️ Ви впевнені, що хочете скинути ВСІ дані харчування? Цю дію неможливо скасувати.')) {
-                alert('Функція в розробці. Напишіть /reset в боті.');
+        // Тест зі своїм фото
+        document.getElementById('testPhoto').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'test-result loading';
+            resultDiv.innerHTML = '<div style="text-align: center;">🤖 Аналізую фото через Gemini 2.5 Flash...<br><span style="font-size: 12px;">Зачекайте 3-5 секунд</span></div>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('photo', file);
+                
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                resultDiv.className = 'test-result success';
+                resultDiv.innerHTML = `
+                    <div style="margin-bottom: 12px;">
+                        <strong style="font-size: 18px;">✅ Результат аналізу:</strong>
+                    </div>
+                    <div style="background: white; border-radius: 12px; padding: 12px;">
+                        <p><strong>🍽️ Страва:</strong> ${data.name || 'Невідомо'}</p>
+                        <p><strong>🔥 Калорії:</strong> ${data.calories || 0} ккал</p>
+                        <p><strong>🥩 Білки:</strong> ${data.protein || 0} г</p>
+                        <p><strong>🧈 Жири:</strong> ${data.fat || 0} г</p>
+                        <p><strong>🍚 Вуглеводи:</strong> ${data.carbs || 0} г</p>
+                        <p><strong>💡 Рекомендація:</strong> ${data.feedback || 'Смачного!'}</p>
+                    </div>
+                `;
+                
+                document.getElementById('geminiStatus').innerHTML = '<span class="status-badge active">✅ Активний</span>';
+                
+            } catch (error) {
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = `
+                    <div>
+                        <strong>❌ Помилка аналізу</strong>
+                        <p style="margin-top: 4px; font-size: 12px;">${error.message}</p>
+                    </div>
+                `;
+            }
+        };
+        
+        // Перевірка статусу Gemini при завантаженні
+        async function checkGeminiStatus() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                if (data.gemini === 'initialized') {
+                    document.getElementById('geminiStatus').innerHTML = '<span class="status-badge active">✅ Активний</span>';
+                } else {
+                    document.getElementById('geminiStatus').innerHTML = '<span class="status-badge inactive">❌ Неактивний</span>';
+                }
+                document.getElementById('dbMode').innerHTML = data.mode === 'in-memory' ? '💾 In-memory' : '☁️ Supabase';
+            } catch (error) {
+                document.getElementById('geminiStatus').innerHTML = '<span class="status-badge inactive">❌ Помилка з\'єднання</span>';
             }
         }
         
@@ -209,9 +340,11 @@
             window.location.href = `/?user_id=${telegramId}`;
         }
         
-        // Завантаження даних
-        loadProfile();
-        loadNotifications();
+        // Завантажуємо дані
+        if (telegramId) {
+            loadProfile();
+            checkGeminiStatus();
+        }
     </script>
 </body>
 </html>
