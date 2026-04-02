@@ -1,138 +1,194 @@
-<!-- ============================================ -->
-<!-- Файл: webapp/add_meal.html -->
-<!-- ============================================ -->
 <!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Додати прийом їжі</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #333; margin-bottom: 20px; font-size: 24px; }
+        .camera-area {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            border: 2px dashed #ddd;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        .camera-area:hover { border-color: #667eea; background: #f0f0f0; }
+        #photoPreview {
+            max-width: 100%;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .result {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 16px;
+            display: none;
+        }
+        .loading {
+            text-align: center;
+            color: #667eea;
+            padding: 20px;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .field {
+            margin-bottom: 12px;
+        }
+        .field label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: #666;
+            font-size: 14px;
+        }
+        .field input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .field input:focus { outline: none; border-color: #667eea; }
+        .feedback {
+            background: #e8f5e9;
+            padding: 12px;
+            border-radius: 8px;
+            color: #2e7d32;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+        .back-btn {
+            background: #666;
+            margin-top: 12px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .action-buttons button { flex: 1; }
+        .save-btn { background: #4caf50; }
+        .retake-btn { background: #ff9800; }
+    </style>
 </head>
 <body>
-    <div class="app-container">
-        <header class="header">
-            <button class="back-btn" onclick="goBack()">← Назад</button>
-            <h1>📸 Додати прийом</h1>
-            <div style="width: 40px;"></div>
-        </header>
+    <div class="container">
+        <h1>📸 Додати прийом їжі</h1>
         
-        <div class="camera-container">
-            <div id="cameraPreview" class="camera-preview">
-                <img id="photoPreview" style="display: none; max-width: 100%; border-radius: 16px;">
-                <button id="takePhotoBtn" class="camera-btn" onclick="takePhoto()">
-                    📷 Зробити фото
-                </button>
+        <div class="camera-area" onclick="document.getElementById('photoInput').click()">
+            📷 Натисніть, щоб вибрати фото
+            <input type="file" id="photoInput" accept="image/*" style="display: none">
+        </div>
+        
+        <img id="photoPreview">
+        
+        <button id="analyzeBtn" onclick="analyzePhoto()" disabled>🔍 Аналізувати через Gemini</button>
+        
+        <div id="result" class="result">
+            <h3 style="margin-bottom: 12px;">📊 Результат аналізу</h3>
+            <div id="resultContent"></div>
+            <div class="action-buttons">
+                <button id="saveBtn" class="save-btn" onclick="saveMeal()" style="display: none;">✅ Зберегти прийом</button>
+                <button id="retakeBtn" class="retake-btn" onclick="resetForm()" style="display: none;">🔄 Нове фото</button>
             </div>
         </div>
         
-        <div id="analysisResult" style="display: none;" class="analysis-card">
-            <div class="loading-spinner" id="loadingSpinner">
-                <div class="spinner"></div>
-                <p>🔍 Аналізую фото через AI...</p>
-            </div>
-            <div id="analysisContent" style="display: none;">
-                <h3>🍽️ Результат аналізу</h3>
-                <div class="analysis-details">
-                    <div class="analysis-field">
-                        <label>Страва:</label>
-                        <span id="mealName"></span>
-                    </div>
-                    <div class="analysis-field">
-                        <label>Калорії:</label>
-                        <input type="number" id="mealCalories" class="editable-input">
-                    </div>
-                    <div class="analysis-field">
-                        <label>Білки (г):</label>
-                        <input type="number" step="0.1" id="mealProtein" class="editable-input">
-                    </div>
-                    <div class="analysis-field">
-                        <label>Жири (г):</label>
-                        <input type="number" step="0.1" id="mealFat" class="editable-input">
-                    </div>
-                    <div class="analysis-field">
-                        <label>Вуглеводи (г):</label>
-                        <input type="number" step="0.1" id="mealCarbs" class="editable-input">
-                    </div>
-                    <div class="analysis-field">
-                        <label>💡 Рекомендація:</label>
-                        <p id="mealFeedback" class="feedback-text"></p>
-                    </div>
-                </div>
-                <div class="action-buttons">
-                    <button class="confirm-btn" onclick="confirmMeal()">✅ Підтвердити</button>
-                    <button class="retake-btn" onclick="resetCamera()">🔄 Перезняти</button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="info-note">
-            <p>📌 Порада: Фотографуйте їжу зверху, при хорошому освітленні для кращого розпізнавання</p>
-        </div>
+        <button class="back-btn" onclick="goBack()">← На головну</button>
     </div>
     
     <script>
         const telegramId = new URLSearchParams(window.location.search).get('user_id');
+        let currentAnalysis = null;
         let currentPhotoFile = null;
         
-        async function takePhoto() {
-            // Використовуємо Telegram WebApp API для доступу до камери
-            if (window.Telegram && window.Telegram.WebApp) {
-                const tg = window.Telegram.WebApp;
-                
-                tg.showPopup({
-                    title: '📸 Фото їжі',
-                    message: 'Зробіть фото вашої страви для аналізу',
-                    buttons: [{type: 'ok'}, {type: 'cancel'}]
-                });
-                
-                // Запускаємо камеру через input
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/*';
-                input.capture = 'environment';
-                
-                input.onchange = async (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        currentPhotoFile = file;
-                        await analyzePhoto(file);
-                    }
-                };
-                
-                input.click();
-            } else {
-                // Fallback для десктопу
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/*';
-                input.onchange = async (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        currentPhotoFile = file;
-                        await analyzePhoto(file);
-                    }
-                };
-                input.click();
-            }
+        // Зберігаємо дані в sessionStorage на випадок перезавантаження
+        if (!telegramId) {
+            alert('Помилка: не знайдено ID користувача');
         }
         
-        async function analyzePhoto(file) {
+        document.getElementById('photoInput').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            currentPhotoFile = file;
+            
             // Показуємо прев'ю
-            const preview = document.getElementById('photoPreview');
-            preview.src = URL.createObjectURL(file);
-            preview.style.display = 'block';
-            document.getElementById('takePhotoBtn').style.display = 'none';
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const preview = document.getElementById('photoPreview');
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
             
-            // Показуємо результат аналізу
-            document.getElementById('analysisResult').style.display = 'block';
-            document.getElementById('loadingSpinner').style.display = 'flex';
-            document.getElementById('analysisContent').style.display = 'none';
+            // Активуємо кнопку аналізу
+            document.getElementById('analyzeBtn').disabled = false;
             
-            // Відправляємо на аналіз
+            // Ховаємо попередній результат
+            document.getElementById('result').style.display = 'none';
+        };
+        
+        async function analyzePhoto() {
+            if (!currentPhotoFile) return;
+            
             const formData = new FormData();
-            formData.append('telegram_id', telegramId);
-            formData.append('photo', file);
+            formData.append('photo', currentPhotoFile);
+            
+            // Показуємо результат з завантаженням
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('resultContent').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>🔍 Аналіз через Gemini 2.5 Flash...</p>
+                    <p style="font-size: 12px; color: #999;">Зачекайте 3-5 секунд</p>
+                </div>
+            `;
+            document.getElementById('saveBtn').style.display = 'none';
+            document.getElementById('retakeBtn').style.display = 'none';
+            document.getElementById('analyzeBtn').disabled = true;
             
             try {
                 const response = await fetch('/api/analyze', {
@@ -140,70 +196,159 @@
                     body: formData
                 });
                 
-                const analysis = await response.json();
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
                 
-                // Заповнюємо дані
-                document.getElementById('mealName').innerText = analysis.name || 'Невідомо';
-                document.getElementById('mealCalories').value = analysis.calories || 0;
-                document.getElementById('mealProtein').value = analysis.protein || 0;
-                document.getElementById('mealFat').value = analysis.fat || 0;
-                document.getElementById('mealCarbs').value = analysis.carbs || 0;
-                document.getElementById('mealFeedback').innerText = analysis.feedback || '✅ Гарний вибір!';
+                const data = await response.json();
+                currentAnalysis = data;
                 
-                // Показуємо контент
-                document.getElementById('loadingSpinner').style.display = 'none';
-                document.getElementById('analysisContent').style.display = 'block';
+                // Зберігаємо аналіз в sessionStorage (на випадок перезавантаження)
+                sessionStorage.setItem('pendingAnalysis', JSON.stringify({
+                    analysis: data,
+                    timestamp: Date.now()
+                }));
+                
+                document.getElementById('resultContent').innerHTML = `
+                    <div class="field">
+                        <label>🍽️ Страва</label>
+                        <input type="text" id="mealName" value="${escapeHtml(data.name || 'Невідомо')}">
+                    </div>
+                    <div class="field">
+                        <label>🔥 Калорії (ккал)</label>
+                        <input type="number" id="mealCalories" value="${data.calories || 0}">
+                    </div>
+                    <div class="field">
+                        <label>🥩 Білки (г)</label>
+                        <input type="number" id="mealProtein" value="${data.protein || 0}" step="0.1">
+                    </div>
+                    <div class="field">
+                        <label>🧈 Жири (г)</label>
+                        <input type="number" id="mealFat" value="${data.fat || 0}" step="0.1">
+                    </div>
+                    <div class="field">
+                        <label>🍚 Вуглеводи (г)</label>
+                        <input type="number" id="mealCarbs" value="${data.carbs || 0}" step="0.1">
+                    </div>
+                    <div class="feedback">
+                        💡 ${escapeHtml(data.feedback || 'Гарний вибір!')}
+                    </div>
+                `;
+                document.getElementById('saveBtn').style.display = 'block';
+                document.getElementById('retakeBtn').style.display = 'block';
                 
             } catch (error) {
                 console.error('Analysis error:', error);
-                document.getElementById('loadingSpinner').innerHTML = '<p>❌ Помилка аналізу. Спробуйте ще раз.</p>';
+                document.getElementById('resultContent').innerHTML = `
+                    <div style="color: red; text-align: center; padding: 20px;">
+                        ❌ Помилка аналізу: ${error.message}<br>
+                        Спробуйте ще раз
+                    </div>
+                `;
+                document.getElementById('retakeBtn').style.display = 'block';
+                document.getElementById('analyzeBtn').disabled = false;
             }
         }
         
-        async function confirmMeal() {
+        async function saveMeal() {
             const mealData = {
                 telegram_id: parseInt(telegramId),
-                photo_url: null,
-                name: document.getElementById('mealName').innerText,
-                calories: parseInt(document.getElementById('mealCalories').value) || 0,
-                protein: parseFloat(document.getElementById('mealProtein').value) || 0,
-                fat: parseFloat(document.getElementById('mealFat').value) || 0,
-                carbs: parseFloat(document.getElementById('mealCarbs').value) || 0,
-                feedback: document.getElementById('mealFeedback').innerText
+                name: document.getElementById('mealName')?.value || 'Невідомо',
+                calories: parseInt(document.getElementById('mealCalories')?.value) || 0,
+                protein: parseFloat(document.getElementById('mealProtein')?.value) || 0,
+                fat: parseFloat(document.getElementById('mealFat')?.value) || 0,
+                carbs: parseFloat(document.getElementById('mealCarbs')?.value) || 0,
+                feedback: currentAnalysis?.feedback || ''
             };
+            
+            // Показуємо завантаження
+            document.getElementById('saveBtn').innerHTML = '💾 Збереження...';
+            document.getElementById('saveBtn').disabled = true;
             
             try {
                 const response = await fetch('/api/meals', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(mealData)
                 });
                 
                 if (response.ok) {
-                    if (window.Telegram && window.Telegram.WebApp) {
-                        window.Telegram.WebApp.close();
-                    }
+                    // Очищаємо sessionStorage
+                    sessionStorage.removeItem('pendingAnalysis');
+                    // Показуємо повідомлення і перенаправляємо
+                    alert('✅ Прийом збережено!');
                     window.location.href = `/?user_id=${telegramId}`;
                 } else {
-                    alert('Помилка збереження');
+                    const error = await response.json();
+                    alert('❌ Помилка збереження: ' + (error.error || 'невідома помилка'));
+                    document.getElementById('saveBtn').innerHTML = '✅ Зберегти прийом';
+                    document.getElementById('saveBtn').disabled = false;
                 }
             } catch (error) {
                 console.error('Save error:', error);
-                alert('Помилка збереження');
+                alert('❌ Помилка збереження: ' + error.message);
+                document.getElementById('saveBtn').innerHTML = '✅ Зберегти прийом';
+                document.getElementById('saveBtn').disabled = false;
             }
         }
         
-        function resetCamera() {
-            document.getElementById('photoPreview').style.display = 'none';
-            document.getElementById('takePhotoBtn').style.display = 'block';
-            document.getElementById('analysisResult').style.display = 'none';
+        function resetForm() {
+            // Скидаємо всі поля
             currentPhotoFile = null;
+            currentAnalysis = null;
+            document.getElementById('photoPreview').style.display = 'none';
+            document.getElementById('photoPreview').src = '';
+            document.getElementById('photoInput').value = '';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('analyzeBtn').disabled = true;
+            sessionStorage.removeItem('pendingAnalysis');
         }
         
         function goBack() {
             window.location.href = `/?user_id=${telegramId}`;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Відновлюємо аналіз після перезавантаження (якщо є)
+        const pending = sessionStorage.getItem('pendingAnalysis');
+        if (pending) {
+            try {
+                const data = JSON.parse(pending);
+                if (data.analysis && (Date.now() - data.timestamp) < 600000) { // 10 хвилин
+                    currentAnalysis = data.analysis;
+                    document.getElementById('result').style.display = 'block';
+                    document.getElementById('resultContent').innerHTML = `
+                        <div class="field">
+                            <label>🍽️ Страва</label>
+                            <input type="text" id="mealName" value="${escapeHtml(currentAnalysis.name || 'Невідомо')}">
+                        </div>
+                        <div class="field">
+                            <label>🔥 Калорії (ккал)</label>
+                            <input type="number" id="mealCalories" value="${currentAnalysis.calories || 0}">
+                        </div>
+                        <div class="field">
+                            <label>🥩 Білки (г)</label>
+                            <input type="number" id="mealProtein" value="${currentAnalysis.protein || 0}" step="0.1">
+                        </div>
+                        <div class="field">
+                            <label>🧈 Жири (г)</label>
+                            <input type="number" id="mealFat" value="${currentAnalysis.fat || 0}" step="0.1">
+                        </div>
+                        <div class="field">
+                            <label>🍚 Вуглеводи (г)</label>
+                            <input type="number" id="mealCarbs" value="${currentAnalysis.carbs || 0}" step="0.1">
+                        </div>
+                        <div class="feedback">💡 ${escapeHtml(currentAnalysis.feedback || 'Гарний вибір!')}</div>
+                    `;
+                    document.getElementById('saveBtn').style.display = 'block';
+                    document.getElementById('retakeBtn').style.display = 'block';
+                }
+            } catch(e) {}
         }
     </script>
 </body>
